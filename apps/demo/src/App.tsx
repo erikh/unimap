@@ -8,7 +8,7 @@ import {
   type TravelMode,
 } from "@unimap/core";
 import { createUnimapClient } from "@unimap/client";
-import { MapCanvas, MapsProvider, useMapsClient } from "@unimap/react";
+import { MapCanvas, MapLayout, MapsProvider, useMapsClient } from "@unimap/react";
 import { MapLibreEngine, type MapView, type MarkerSpec, type PolylineSpec } from "@unimap/render";
 
 const PROXY_URL =
@@ -75,72 +75,73 @@ function DirectionsPanel(): JSX.Element {
 
   const steps = state.route?.legs.flatMap((leg) => leg.steps) ?? [];
 
-  return (
-    <div style={{ display: "flex", height: "100vh", fontFamily: "system-ui, sans-serif" }}>
-      <aside style={{ width: 400, padding: 16, overflow: "auto", borderRight: "1px solid #ddd" }}>
-        <h1 style={{ fontSize: 20 }}>UniMap directions</h1>
-        <p style={{ color: "#666", fontSize: 13 }}>
-          Directions across Google / Apple / OpenStreetMap behind one interface. Routing + geocoding
-          run through the proxy; the basemap is MapLibre + OSM.
-        </p>
-        <form onSubmit={getDirections}>
-          <input
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            placeholder="From…"
-            style={{ width: "100%", padding: 8, boxSizing: "border-box", marginBottom: 6 }}
-          />
-          <input
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            placeholder="To…"
-            style={{ width: "100%", padding: 8, boxSizing: "border-box", marginBottom: 6 }}
-          />
-          <div style={{ display: "flex", gap: 8 }}>
-            <select value={mode} onChange={(e) => setMode(e.target.value as TravelMode)} style={{ flex: 1 }}>
-              {MODES.map((m) => (
-                <option key={m} value={m}>
-                  {m[0] + m.slice(1).toLowerCase()}
-                </option>
-              ))}
-            </select>
-            <button type="submit">Directions</button>
-          </div>
-        </form>
-
-        {state.loading && <p>Routing…</p>}
-        {state.error && <p style={{ color: "crimson" }}>{state.error}</p>}
-
-        {state.route && (
-          <>
-            <p style={{ marginTop: 16 }}>
-              <b>{(state.route.distanceMeters / 1000).toFixed(1)} km</b> ·{" "}
-              {Math.round(state.route.durationSeconds / 60)} min{" "}
-              <small style={{ color: "#888" }}>[{state.route.attribution.provider}]</small>
-            </p>
-            <ol style={{ paddingLeft: 18, fontSize: 13, lineHeight: 1.5 }}>
-              {steps.map((s, i) => (
-                <li key={i}>
-                  {s.maneuver?.instruction ?? "Continue"}{" "}
-                  <span style={{ color: "#999" }}>({Math.round(s.distanceMeters)} m)</span>
-                </li>
-              ))}
-            </ol>
-          </>
-        )}
-      </aside>
-      <main style={{ flex: 1 }}>
-        <MapCanvas
-          engine={() => new MapLibreEngine({ maplibre: maplibregl })}
-          options={{ center: { lat: 37.6, lng: -122.2 }, zoom: 9 }}
-          markers={markers}
-          polylines={polylines}
-          onReady={(view) => {
-            viewRef.current = view;
-          }}
+  const sidebar = (
+    <div style={{ padding: 16, fontFamily: "system-ui, sans-serif" }}>
+      <h1 style={{ fontSize: 20 }}>UniMap directions</h1>
+      <p style={{ color: "#666", fontSize: 13 }}>
+        Directions across Google / Apple / OpenStreetMap behind one interface. Routing + geocoding run
+        through the proxy; the basemap is MapLibre + OSM.
+      </p>
+      <form onSubmit={getDirections}>
+        <input
+          value={from}
+          onChange={(e) => setFrom(e.target.value)}
+          placeholder="From…"
+          style={{ width: "100%", padding: 8, boxSizing: "border-box", marginBottom: 6 }}
         />
-      </main>
+        <input
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+          placeholder="To…"
+          style={{ width: "100%", padding: 8, boxSizing: "border-box", marginBottom: 6 }}
+        />
+        <div style={{ display: "flex", gap: 8 }}>
+          <select value={mode} onChange={(e) => setMode(e.target.value as TravelMode)} style={{ flex: 1 }}>
+            {MODES.map((m) => (
+              <option key={m} value={m}>
+                {m[0] + m.slice(1).toLowerCase()}
+              </option>
+            ))}
+          </select>
+          <button type="submit">Directions</button>
+        </div>
+      </form>
+
+      {state.loading && <p>Routing…</p>}
+      {state.error && <p style={{ color: "crimson" }}>{state.error}</p>}
+
+      {state.route && (
+        <>
+          <p style={{ marginTop: 16 }}>
+            <b>{(state.route.distanceMeters / 1000).toFixed(1)} km</b> ·{" "}
+            {Math.round(state.route.durationSeconds / 60)} min{" "}
+            <small style={{ color: "#888" }}>[{state.route.attribution.provider}]</small>
+          </p>
+          <ol style={{ paddingLeft: 18, fontSize: 13, lineHeight: 1.5 }}>
+            {steps.map((s, i) => (
+              <li key={i}>
+                {s.maneuver?.instruction ?? "Continue"}{" "}
+                <span style={{ color: "#999" }}>({Math.round(s.distanceMeters)} m)</span>
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
     </div>
+  );
+
+  return (
+    <MapLayout sidebar={sidebar}>
+      <MapCanvas
+        engine={() => new MapLibreEngine({ maplibre: maplibregl })}
+        options={{ center: { lat: 37.6, lng: -122.2 }, zoom: 9 }}
+        markers={markers}
+        polylines={polylines}
+        onReady={(view) => {
+          viewRef.current = view;
+        }}
+      />
+    </MapLayout>
   );
 }
 

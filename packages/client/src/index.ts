@@ -89,7 +89,10 @@ export class UnimapClient implements GeocodingService, RoutingService, PlacesSer
     this.provider = options.provider;
     this.headers = options.headers ?? {};
     this.validate = options.validate ?? true;
-    this.fetchImpl = options.fetchImpl ?? fetch;
+    // Bind to globalThis so the global fetch isn't invoked as a method of this
+    // client instance — browsers throw "Illegal invocation" / "'fetch' called on
+    // an object that does not implement interface Window" otherwise. (Node is lenient.)
+    this.fetchImpl = (options.fetchImpl ?? fetch).bind(globalThis);
   }
 
   geocode(query: GeocodeQuery): Promise<GeocodeResult[]> {

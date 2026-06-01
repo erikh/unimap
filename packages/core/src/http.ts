@@ -17,7 +17,9 @@ export async function httpJson<T = unknown>(
   init?: RequestInit,
   options: HttpOptions = {},
 ): Promise<T> {
-  const doFetch = options.fetchImpl ?? fetch;
+  // Bind to globalThis: an unbound global fetch called via a variable throws
+  // "Illegal invocation" in browsers (Node is lenient).
+  const doFetch = (options.fetchImpl ?? fetch).bind(globalThis);
   let response: Response;
   try {
     response = await doFetch(url, init);

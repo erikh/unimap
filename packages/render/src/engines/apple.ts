@@ -66,7 +66,8 @@ export class AppleEngine implements RenderEngine {
   private authorizationCallback(): (done: (token: string) => void) => void {
     if (this.options.authorizationCallback) return this.options.authorizationCallback;
     const { token, tokenUrl, fetchImpl } = this.options;
-    const doFetch = fetchImpl ?? (typeof fetch !== "undefined" ? fetch : undefined);
+    const rawFetch = fetchImpl ?? (typeof fetch !== "undefined" ? fetch : undefined);
+    const doFetch = rawFetch ? rawFetch.bind(globalThis) : undefined;
     return (done) => {
       if (token) return done(token);
       if (!tokenUrl || !doFetch) throw new Error("AppleEngine requires a token, tokenUrl, or authorizationCallback");

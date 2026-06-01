@@ -7,3 +7,4 @@ export {
   type AsyncState,
 } from "./hooks";
 export { MapCanvas, type MapCanvasProps } from "./map";
+export { MapLayout, type MapLayoutProps } from "./layout";

@@ -100,4 +100,17 @@ describe("client → proxy → adapter → mock (full stack over HTTP)", () => {
       code: "NOT_SUPPORTED",
     });
   });
+
+  it("never invokes fetch with the client as `this` (browser Illegal-invocation guard)", async () => {
+    let capturedThis: unknown = "unset";
+    function probeFetch(this: unknown, input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+      capturedThis = this;
+      return fetch(input, init);
+    }
+    const probed = createUnimapClient({ baseUrl: proxy.url, provider: "osm", fetchImpl: probeFetch as typeof fetch });
+    await probed.geocode({ query: "x" });
+    // A browser throws "Illegal invocation" if fetch runs with `this` === the client instance.
+    expect(capturedThis).not.toBe(probed);
+    expect(capturedThis).toBe(globalThis);
+  });
 });
