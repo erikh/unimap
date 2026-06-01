@@ -25,6 +25,11 @@ export interface MapLibreEngineOptions {
   /** Raster XYZ template used by the built-in style. */
   tileUrl?: string;
   attribution?: Attribution[];
+  /**
+   * Extra credit appended to the attribution control, e.g. "Combined with UniMap".
+   * Shown ALONGSIDE — never replacing — the required OSM attribution.
+   */
+  customAttribution?: string;
   /** Inject the maplibre-gl module instead of dynamically importing it. */
   maplibre?: any;
 }
@@ -66,7 +71,13 @@ export class MapLibreEngine implements RenderEngine {
       zoom: options.zoom ?? 1,
       bearing: options.bearing ?? 0,
       pitch: options.pitch ?? 0,
+      // We add our own control below so the required OSM credit and our custom
+      // credit render together (and there's no duplicate default control).
+      attributionControl: false,
     });
+    this.map.addControl(
+      new this.gl.AttributionControl({ customAttribution: this.options.customAttribution }),
+    );
     this.map.on("moveend", () => this.emitter.emit("moveend", { camera: this.getCamera() }));
     this.map.on("click", (e: any) =>
       this.emitter.emit("click", { location: { lat: e.lngLat.lat, lng: e.lngLat.lng } }),

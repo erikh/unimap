@@ -24,6 +24,10 @@ surface.
 - **No scraping.** The default build calls only official, documented endpoints.
 - **No stripping attribution.** Every `GeocodeResult`/`Place`/`Route`/`TileSource` carries an
   `attribution`, and the render layer always surfaces it.
+- **Co-branding is additive only.** You may append your own credit (e.g. "Combined with UniMap" via
+  `MapLibreEngine`'s `customAttribution`), but it renders *alongside* `© OpenStreetMap contributors`,
+  never replacing or obscuring it. We don't use the OSM name/logo as branding or imply endorsement.
+  This is a render-time overlay (an ODbL "Produced Work"), not a modified or re-served tile.
 
 ## 3. Per-provider Terms of Service
 

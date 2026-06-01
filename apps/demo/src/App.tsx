@@ -133,7 +133,7 @@ function DirectionsPanel(): JSX.Element {
   return (
     <MapLayout sidebar={sidebar}>
       <MapCanvas
-        engine={() => new MapLibreEngine({ maplibre: maplibregl })}
+        engine={() => new MapLibreEngine({ maplibre: maplibregl, customAttribution: "Combined with UniMap" })}
         options={{ center: { lat: 37.6, lng: -122.2 }, zoom: 9 }}
         markers={markers}
         polylines={polylines}
