@@ -1,5 +1,10 @@
 # UniMap
 
+[![CI](https://github.com/erikh/unimap/actions/workflows/ci.yml/badge.svg)](https://github.com/erikh/unimap/actions/workflows/ci.yml)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](./LICENSE)
+[![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen.svg)](#quick-start)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6.svg)](#)
+
 **One JavaScript/TypeScript interface over Google Maps, Apple Maps, and OpenStreetMap.**
 
 Write your geocoding, routing, places, static-map and interactive-map code once, then run it against
