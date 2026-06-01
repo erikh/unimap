@@ -19,6 +19,7 @@
     "test:live": "UNIMAP_LIVE=1 vitest run",
     "dev:mock": "tsx packages/mock-server/src/server.ts",
     "dev:proxy": "tsx packages/proxy/src/server.ts",
+    "dev:ui": "node scripts/dev-ui.mjs",
     "example": "tsx examples/try.ts",
     "example:offline": "tsx examples/offline.ts",
     "clean": "rm -rf packages/*/dist apps/*/dist **/*.tsbuildinfo"

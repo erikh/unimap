@@ -66,12 +66,19 @@ npm run build      # typecheck the whole monorepo
 npm test           # unit + integration tests against the in-process mock (no secrets)
 ```
 
-Run the stack locally (no credentials — defaults to OpenStreetMap):
+Run the UI + API locally with one command (no credentials — defaults to OpenStreetMap):
 
 ```bash
-npm run dev:mock   # mock provider APIs on :8788
-npm run dev:proxy  # unified proxy on :8787
-# then: cd apps/demo && npm install && VITE_PROXY_URL=http://localhost:8787 npm run dev
+npm run dev:ui     # starts the proxy (API, :8787) + demo UI (:5173)
+                   # then open http://localhost:5173  ── the UI is wired to the :8787 API
+```
+
+Or run the pieces yourself:
+
+```bash
+npm run dev:proxy                              # the API (unified proxy) on :8787
+cd apps/demo && npm install && npm run dev     # the UI on :5173 (defaults to the :8787 API)
+# override the API the UI targets: VITE_PROXY_URL=http://host:port npm run dev
 ```
 
 Or with Docker:

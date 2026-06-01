@@ -8,21 +8,36 @@ straight to the package sources in `../../packages`.
 
 ## Run
 
-```bash
-# 1. From the repo root, start the mock + proxy (no credentials needed):
-npm run dev:mock      # terminal 1  (mock provider APIs on :8788)
-npm run dev:proxy     # terminal 2  (unified proxy on :8787, backed by OSM by default)
+Easiest — one command from the repo root starts the API (proxy, :8787) and this UI (:5173)
+together, wired to each other:
 
-# 2. Start the demo:
+```bash
+npm run dev:ui      # then open http://localhost:5173
+```
+
+Or run the pieces yourself:
+
+```bash
+# 1. From the repo root, start the proxy (the API; no credentials needed):
+npm run dev:proxy     # unified proxy on :8787, backed by OSM by default
+
+# 2. Start this demo (defaults to the :8787 API; override with VITE_PROXY_URL):
 cd apps/demo
 npm install
-VITE_PROXY_URL=http://localhost:8787 npm run dev   # http://localhost:5173
+npm run dev           # http://localhost:5173
+```
+
+**Accessing from another device** (phone, another laptop): use your machine's LAN IP for *both* —
+the browser makes the API call, so it can't use `localhost`:
+
+```bash
+VITE_PROXY_URL=http://192.168.1.50:8787 npm run dev   # then open http://192.168.1.50:5173
 ```
 
 Or bring up everything with Docker from the repo root:
 
 ```bash
-docker compose up        # proxy + mock + demo
+docker compose up        # proxy + mock + demo at http://localhost:5173
 ```
 
 Switch providers by configuring credentials on the proxy (`.env`) and pinning a provider with

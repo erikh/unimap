@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import maplibregl from "maplibre-gl";
 import { createUnimapClient } from "@unimap/client";
 import { MapCanvas, MapsProvider, useGeocode } from "@unimap/react";
 import { MapLibreEngine, type MarkerSpec } from "@unimap/render";
@@ -51,7 +52,7 @@ function SearchPanel(): JSX.Element {
       </aside>
       <main style={{ flex: 1 }}>
         <MapCanvas
-          engine={() => new MapLibreEngine()}
+          engine={() => new MapLibreEngine({ maplibre: maplibregl })}
           options={{ center: { lat: 37.4224, lng: -122.0841 }, zoom: 9 }}
           markers={markers}
         />
