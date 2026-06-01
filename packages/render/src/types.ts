@@ -17,6 +17,15 @@ export interface MarkerSpec {
   popupHtml?: string;
 }
 
+export interface PolylineSpec {
+  /** Stable id; auto-assigned when omitted. */
+  id?: string;
+  /** Ordered points of the line (e.g. a decoded route polyline). */
+  path: LatLng[];
+  color?: string;
+  width?: number;
+}
+
 export interface MapViewOptions {
   center?: LatLng;
   zoom?: number;
@@ -77,6 +86,8 @@ export interface RenderEngine {
   fitBounds(bounds: BoundingBox, padding?: number): void;
   addMarker(marker: MarkerSpec): string;
   removeMarker(id: string): void;
+  addPolyline(line: PolylineSpec): string;
+  removePolyline(id: string): void;
   on<E extends keyof MapEvents>(event: E, listener: Listener<MapEvents[E]>): void;
   off<E extends keyof MapEvents>(event: E, listener: Listener<MapEvents[E]>): void;
   /** Required attributions to display (ToS + ODbL). */

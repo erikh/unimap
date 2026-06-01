@@ -6,6 +6,7 @@ import {
   type MapEvents,
   type MapViewOptions,
   type MarkerSpec,
+  type PolylineSpec,
   type RenderEngine,
 } from "../types";
 
@@ -57,6 +58,7 @@ export class AppleEngine implements RenderEngine {
   private map: any;
   private readonly emitter = new Emitter<MapEvents>();
   private readonly markers = new Map<string, any>();
+  private readonly lines = new Map<string, any>();
   private counter = 0;
 
   constructor(private readonly options: AppleEngineOptions = {}) {}
@@ -133,6 +135,23 @@ export class AppleEngine implements RenderEngine {
     this.markers.delete(id);
   }
 
+  addPolyline(line: PolylineSpec): string {
+    const id = line.id ?? `line-${++this.counter}`;
+    const coords = line.path.map((p) => new this.mapkit.Coordinate(p.lat, p.lng));
+    const overlay = new this.mapkit.PolylineOverlay(coords, {
+      style: new this.mapkit.Style({ lineWidth: line.width ?? 5, strokeColor: line.color ?? "#2563eb" }),
+    });
+    this.map.addOverlay(overlay);
+    this.lines.set(id, overlay);
+    return id;
+  }
+
+  removePolyline(id: string): void {
+    const overlay = this.lines.get(id);
+    if (overlay) this.map.removeOverlay(overlay);
+    this.lines.delete(id);
+  }
+
   on<E extends keyof MapEvents>(event: E, listener: Listener<MapEvents[E]>): void {
     this.emitter.on(event, listener);
   }
@@ -148,6 +167,7 @@ export class AppleEngine implements RenderEngine {
   }
   destroy(): void {
     this.markers.clear();
+    this.lines.clear();
     this.map?.destroy?.();
   }
 }

@@ -1,5 +1,13 @@
 import type { Attribution, BoundingBox } from "@unimap/core";
-import type { Camera, Listener, MapEvents, MapViewOptions, MarkerSpec, RenderEngine } from "./types";
+import type {
+  Camera,
+  Listener,
+  MapEvents,
+  MapViewOptions,
+  MarkerSpec,
+  PolylineSpec,
+  RenderEngine,
+} from "./types";
 
 /**
  * The unified interactive map. Wraps any RenderEngine and exposes one stable
@@ -9,6 +17,7 @@ import type { Camera, Listener, MapEvents, MapViewOptions, MarkerSpec, RenderEng
  */
 export class MapView {
   private readonly markerIds = new Set<string>();
+  private readonly polylineIds = new Set<string>();
 
   private constructor(public readonly engine: RenderEngine) {}
 
@@ -56,6 +65,26 @@ export class MapView {
 
   get markerCount(): number {
     return this.markerIds.size;
+  }
+
+  addPolyline(line: PolylineSpec): string {
+    const id = this.engine.addPolyline(line);
+    this.polylineIds.add(id);
+    return id;
+  }
+
+  removePolyline(id: string): void {
+    this.engine.removePolyline(id);
+    this.polylineIds.delete(id);
+  }
+
+  clearPolylines(): void {
+    for (const id of this.polylineIds) this.engine.removePolyline(id);
+    this.polylineIds.clear();
+  }
+
+  get polylineCount(): number {
+    return this.polylineIds.size;
   }
 
   on<E extends keyof MapEvents>(event: E, listener: Listener<MapEvents[E]>): void {

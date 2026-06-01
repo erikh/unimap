@@ -6,6 +6,7 @@ import {
   type MapEvents,
   type MapViewOptions,
   type MarkerSpec,
+  type PolylineSpec,
   type RenderEngine,
 } from "./types";
 
@@ -30,6 +31,7 @@ export class FakeEngine implements RenderEngine {
   mounted = false;
   private camera: Camera = { center: { lat: 0, lng: 0 }, zoom: 1, bearing: 0, pitch: 0 };
   private readonly markers = new Map<string, MarkerSpec>();
+  private readonly polylines = new Map<string, PolylineSpec>();
   private readonly emitter = new Emitter<MapEvents>();
   private counter = 0;
   private readonly attrs: Attribution[];
@@ -75,6 +77,16 @@ export class FakeEngine implements RenderEngine {
     this.markers.delete(id);
   }
 
+  addPolyline(line: PolylineSpec): string {
+    const id = line.id ?? `line-${++this.counter}`;
+    this.polylines.set(id, { ...line, id });
+    return id;
+  }
+
+  removePolyline(id: string): void {
+    this.polylines.delete(id);
+  }
+
   on<E extends keyof MapEvents>(event: E, listener: Listener<MapEvents[E]>): void {
     this.emitter.on(event, listener);
   }
@@ -87,18 +99,22 @@ export class FakeEngine implements RenderEngine {
     return [...this.attrs];
   }
 
-  getNative(): { camera: Camera; markers: Map<string, MarkerSpec> } {
-    return { camera: this.camera, markers: this.markers };
+  getNative(): { camera: Camera; markers: Map<string, MarkerSpec>; polylines: Map<string, PolylineSpec> } {
+    return { camera: this.camera, markers: this.markers, polylines: this.polylines };
   }
 
   destroy(): void {
     this.markers.clear();
+    this.polylines.clear();
     this.mounted = false;
   }
 
   // --- test/dev helpers --------------------------------------------------
   listMarkers(): MarkerSpec[] {
     return [...this.markers.values()];
+  }
+  listPolylines(): PolylineSpec[] {
+    return [...this.polylines.values()];
   }
   simulateClick(location: LatLng): void {
     this.emitter.emit("click", { location });

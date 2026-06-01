@@ -1,12 +1,19 @@
 import { useEffect, useRef, type CSSProperties } from "react";
 import type { LatLng } from "@unimap/core";
-import { MapView, type MapViewOptions, type MarkerSpec, type RenderEngine } from "@unimap/render";
+import {
+  MapView,
+  type MapViewOptions,
+  type MarkerSpec,
+  type PolylineSpec,
+  type RenderEngine,
+} from "@unimap/render";
 
 export interface MapCanvasProps {
   /** A render engine instance or factory (MapLibreEngine / GoogleEngine / AppleEngine). */
   engine: RenderEngine | (() => RenderEngine);
   options?: MapViewOptions;
   markers?: MarkerSpec[];
+  polylines?: PolylineSpec[];
   className?: string;
   style?: CSSProperties;
   onReady?: (view: MapView) => void;
@@ -32,6 +39,7 @@ export function MapCanvas(props: MapCanvasProps): JSX.Element {
       if (props.onClick) view.on("click", (payload) => props.onClick?.(payload.location));
       props.onReady?.(view);
       for (const marker of props.markers ?? []) view.addMarker(marker);
+      for (const line of props.polylines ?? []) view.addPolyline(line);
     });
     return () => {
       disposed = true;
@@ -47,6 +55,13 @@ export function MapCanvas(props: MapCanvasProps): JSX.Element {
     view.clearMarkers();
     for (const marker of props.markers ?? []) view.addMarker(marker);
   }, [props.markers]);
+
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.clearPolylines();
+    for (const line of props.polylines ?? []) view.addPolyline(line);
+  }, [props.polylines]);
 
   return (
     <div

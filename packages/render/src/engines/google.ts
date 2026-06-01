@@ -6,6 +6,7 @@ import {
   type MapEvents,
   type MapViewOptions,
   type MarkerSpec,
+  type PolylineSpec,
   type RenderEngine,
 } from "../types";
 
@@ -58,6 +59,7 @@ export class GoogleEngine implements RenderEngine {
   private map: any;
   private readonly emitter = new Emitter<MapEvents>();
   private readonly markers = new Map<string, any>();
+  private readonly lines = new Map<string, any>();
   private counter = 0;
 
   constructor(private readonly options: GoogleEngineOptions) {}
@@ -118,6 +120,23 @@ export class GoogleEngine implements RenderEngine {
     this.markers.delete(id);
   }
 
+  addPolyline(line: PolylineSpec): string {
+    const id = line.id ?? `line-${++this.counter}`;
+    const polyline = new this.g.maps.Polyline({
+      path: line.path.map((p) => ({ lat: p.lat, lng: p.lng })),
+      strokeColor: line.color ?? "#2563eb",
+      strokeWeight: line.width ?? 5,
+      map: this.map,
+    });
+    this.lines.set(id, polyline);
+    return id;
+  }
+
+  removePolyline(id: string): void {
+    this.lines.get(id)?.setMap(null);
+    this.lines.delete(id);
+  }
+
   on<E extends keyof MapEvents>(event: E, listener: Listener<MapEvents[E]>): void {
     this.emitter.on(event, listener);
   }
@@ -134,5 +153,7 @@ export class GoogleEngine implements RenderEngine {
   destroy(): void {
     this.markers.forEach((m) => m.setMap(null));
     this.markers.clear();
+    this.lines.forEach((l) => l.setMap(null));
+    this.lines.clear();
   }
 }

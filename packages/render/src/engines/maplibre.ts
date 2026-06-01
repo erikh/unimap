@@ -6,6 +6,7 @@ import {
   type MapEvents,
   type MapViewOptions,
   type MarkerSpec,
+  type PolylineSpec,
   type RenderEngine,
 } from "../types";
 import { loadModule } from "../load";
@@ -38,6 +39,7 @@ export class MapLibreEngine implements RenderEngine {
   private map: any;
   private readonly emitter = new Emitter<MapEvents>();
   private readonly markers = new Map<string, any>();
+  private readonly lines = new Map<string, string>();
   private counter = 0;
   private readonly attrs: Attribution[];
 
@@ -118,6 +120,36 @@ export class MapLibreEngine implements RenderEngine {
     this.markers.delete(id);
   }
 
+  addPolyline(line: PolylineSpec): string {
+    const id = line.id ?? `line-${++this.counter}`;
+    const key = `unimap-line-${id}`;
+    this.map.addSource(key, {
+      type: "geojson",
+      data: {
+        type: "Feature",
+        geometry: { type: "LineString", coordinates: line.path.map((p) => [p.lng, p.lat]) },
+      },
+    });
+    this.map.addLayer({
+      id: key,
+      type: "line",
+      source: key,
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": line.color ?? "#2563eb", "line-width": line.width ?? 5 },
+    });
+    this.lines.set(id, key);
+    return id;
+  }
+
+  removePolyline(id: string): void {
+    const key = this.lines.get(id);
+    if (key) {
+      if (this.map.getLayer(key)) this.map.removeLayer(key);
+      if (this.map.getSource(key)) this.map.removeSource(key);
+    }
+    this.lines.delete(id);
+  }
+
   on<E extends keyof MapEvents>(event: E, listener: Listener<MapEvents[E]>): void {
     this.emitter.on(event, listener);
   }
@@ -134,5 +166,6 @@ export class MapLibreEngine implements RenderEngine {
   destroy(): void {
     this.map?.remove();
     this.markers.clear();
+    this.lines.clear();
   }
 }

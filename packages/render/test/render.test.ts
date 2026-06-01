@@ -29,6 +29,27 @@ describe("MapView orchestration (engine-agnostic)", () => {
     expect(engine.listMarkers()).toHaveLength(0);
   });
 
+  it("adds, removes, and clears route polylines", async () => {
+    const engine = new FakeEngine();
+    const view = await MapView.create(container, engine, {});
+    const id = view.addPolyline({
+      path: [
+        { lat: 0, lng: 0 },
+        { lat: 1, lng: 1 },
+      ],
+      color: "#ff0000",
+    });
+    expect(view.polylineCount).toBe(1);
+    expect(engine.listPolylines()[0]!.id).toBe(id);
+    expect(engine.listPolylines()[0]!.path).toHaveLength(2);
+    view.removePolyline(id);
+    expect(view.polylineCount).toBe(0);
+    view.addPolyline({ path: [{ lat: 0, lng: 0 }] });
+    view.clearPolylines();
+    expect(view.polylineCount).toBe(0);
+    expect(engine.listPolylines()).toHaveLength(0);
+  });
+
   it("forwards normalized click events", async () => {
     const engine = new FakeEngine();
     const view = await MapView.create(container, engine, {});
