@@ -1,8 +1,15 @@
+# build artifacts & caches
 node_modules/
 dist/
 build/
+out/
+.vite/
+.turbo/
+.cache/
 *.tsbuildinfo
+*.tgz
 coverage/
+.nyc_output/
 .env
 .env.local
 .env.*.local
