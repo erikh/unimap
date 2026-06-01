@@ -1,0 +1,26 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@unimap/core": ["packages/core/src/index.ts"],
+      "@unimap/core/*": ["packages/core/src/*"],
+      "@unimap/testing": ["packages/testing/src/index.ts"],
+      "@unimap/mock-server": ["packages/mock-server/src/index.ts"],
+      "@unimap/provider-google": ["packages/provider-google/src/index.ts"],
+      "@unimap/provider-apple": ["packages/provider-apple/src/index.ts"],
+      "@unimap/provider-osm": ["packages/provider-osm/src/index.ts"],
+      "@unimap/provider-unofficial": ["packages/provider-unofficial/src/index.ts"],
+      "@unimap/proxy": ["packages/proxy/src/index.ts"],
+      "@unimap/client": ["packages/client/src/index.ts"],
+      "@unimap/render": ["packages/render/src/index.ts"],
+      "@unimap/react": ["packages/react/src/index.ts"]
+    }
+  },
+  "include": [
+    "packages/*/src/**/*",
+    "packages/*/test/**/*",
+    "vitest.config.ts"
+  ],
+  "exclude": ["node_modules", "**/dist", "**/node_modules"]
+}

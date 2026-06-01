@@ -1,0 +1,16 @@
+# UniMap proxy — credential custody + unified normalization REST.
+# Runs TypeScript directly via tsx (no emit step needed).
+FROM node:22-alpine
+WORKDIR /app
+
+# Workspace manifests + sources (node_modules excluded via .dockerignore).
+COPY package.json package-lock.json* tsconfig.base.json tsconfig.json ./
+COPY packages ./packages
+
+RUN npm install --no-audit --no-fund
+
+ENV PROXY_PORT=8787
+EXPOSE 8787
+
+# Provider credentials are supplied at runtime (env). None are baked into the image.
+CMD ["npx", "tsx", "packages/proxy/src/server.ts"]

@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["vite/client", "react", "react-dom"],
+    "baseUrl": ".",
+    "paths": {
+      "@unimap/core": ["../../packages/core/src/index.ts"],
+      "@unimap/client": ["../../packages/client/src/index.ts"],
+      "@unimap/render": ["../../packages/render/src/index.ts"],
+      "@unimap/react": ["../../packages/react/src/index.ts"]
+    }
+  },
+  "include": ["src", "vite.config.ts"]
+}

@@ -1,0 +1,109 @@
+# UniMap full stack.
+#   docker compose up                 -> mock + proxy + demo (no credentials needed)
+#   docker compose --profile osm up   -> also start a self-hosted OpenStreetMap stack
+#   docker compose --profile test run --rm test   -> run the integration suite against the mock
+name: unimap
+
+services:
+  mock:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.mock
+    environment:
+      MOCK_PORT: "8788"
+    ports:
+      - "8788:8788"
+
+  proxy:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.proxy
+    environment:
+      PROXY_PORT: "8787"
+      # Provider credentials are optional — OSM needs none. Values come from .env / the host.
+      GOOGLE_MAPS_API_KEY: "${GOOGLE_MAPS_API_KEY:-}"
+      GOOGLE_MAPS_OAUTH_TOKEN: "${GOOGLE_MAPS_OAUTH_TOKEN:-}"
+      APPLE_MAPS_PRIVATE_KEY: "${APPLE_MAPS_PRIVATE_KEY:-}"
+      APPLE_MAPS_KEY_ID: "${APPLE_MAPS_KEY_ID:-}"
+      APPLE_MAPS_TEAM_ID: "${APPLE_MAPS_TEAM_ID:-}"
+      APPLE_MAPS_ORIGIN: "${APPLE_MAPS_ORIGIN:-}"
+      # Leave OSM_* blank to use public endpoints, or point at the osm-profile services below.
+      OSM_NOMINATIM_URL: "${OSM_NOMINATIM_URL:-}"
+      OSM_OSRM_URL: "${OSM_OSRM_URL:-}"
+      OSM_PHOTON_URL: "${OSM_PHOTON_URL:-}"
+      OSM_TILE_URL: "${OSM_TILE_URL:-}"
+      OSM_USER_AGENT: "${OSM_USER_AGENT:-unimap-compose/0.1}"
+      UNIMAP_ENABLE_UNOFFICIAL: "${UNIMAP_ENABLE_UNOFFICIAL:-0}"
+      UNIMAP_SOURCE_URL: "${UNIMAP_SOURCE_URL:-https://github.com/unimap/unimap}"
+    ports:
+      - "8787:8787"
+    depends_on:
+      - mock
+
+  demo:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.demo
+      args:
+        VITE_PROXY_URL: "${VITE_PROXY_URL:-http://localhost:8787}"
+    ports:
+      - "5173:80"
+    depends_on:
+      - proxy
+
+  # Run the integration suite (mock-backed) in a container.
+  test:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.proxy
+    profiles: ["test"]
+    command: ["npm", "test"]
+
+  # ---------------------------------------------------------------------------
+  # Optional self-hosted OpenStreetMap stack (HEAVY: region data, RAM, disk).
+  # Start with `--profile osm`, then set OSM_* in .env to the URLs below.
+  # ---------------------------------------------------------------------------
+  nominatim:
+    image: mediagis/nominatim:4.4
+    profiles: ["osm"]
+    environment:
+      PBF_URL: "${NOMINATIM_PBF_URL:-https://download.geofabrik.de/europe/monaco-latest.osm.pbf}"
+      IMPORT_WIKIPEDIA: "false"
+    ports:
+      - "8080:8080"
+    shm_size: "1gb"
+    volumes:
+      - nominatim-data:/var/lib/postgresql/14/main
+
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend:latest
+    profiles: ["osm"]
+    # Requires a pre-processed dataset at ./data/osrm/region.osrm (see ARCHITECTURE.md).
+    command: ["osrm-routed", "--algorithm", "mld", "/data/region.osrm"]
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data/osrm:/data
+
+  photon:
+    image: rtuszik/photon-docker:latest
+    profiles: ["osm"]
+    environment:
+      REGION: "${PHOTON_REGION:-monaco}"
+    ports:
+      - "2322:2322"
+    volumes:
+      - photon-data:/photon/photon_data
+
+  tileserver:
+    image: maptiler/tileserver-gl:latest
+    profiles: ["osm"]
+    # Mount an .mbtiles + style under ./data/tiles.
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./data/tiles:/data
+
+volumes:
+  nominatim-data:
+  photon-data:

@@ -1,0 +1,16 @@
+{
+  "name": "@unimap/provider-apple",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "AGPL-3.0-or-later",
+  "description": "Apple Maps Server API adapter (geocode, search, directions, ETA) with MapKit JWT auth, for UniMap.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@unimap/core": "*",
+    "jose": "^5.9.6"
+  }
+}

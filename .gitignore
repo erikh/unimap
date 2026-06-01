@@ -1,0 +1,16 @@
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+coverage/
+.env
+.env.local
+.env.*.local
+*.log
+npm-debug.log*
+.DS_Store
+playwright-report/
+test-results/
+# self-hosted OSM data volumes (compose --profile osm)
+data/
+*.p8

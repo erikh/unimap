@@ -1,0 +1,16 @@
+# UniMap demo — builds the Vite/React app and serves it with nginx.
+FROM node:22-alpine AS build
+WORKDIR /app
+
+# Whole repo so the demo's Vite aliases can read @unimap/* package sources, and
+# so transitive deps (zod, etc.) resolve from the root node_modules.
+COPY . .
+RUN npm install --no-audit --no-fund
+
+ARG VITE_PROXY_URL=http://localhost:8787
+ENV VITE_PROXY_URL=$VITE_PROXY_URL
+RUN cd apps/demo && npm install --no-audit --no-fund && npm run build
+
+FROM nginx:alpine
+COPY --from=build /app/apps/demo/dist /usr/share/nginx/html
+EXPOSE 80
