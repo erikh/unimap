@@ -6,6 +6,9 @@ import { AttributionSchema } from "./attribution";
 export const TravelModeSchema = z.enum(["DRIVE", "WALK", "BICYCLE", "TRANSIT"]);
 export type TravelMode = z.infer<typeof TravelModeSchema>;
 
+/** All neutral travel modes, in canonical order. */
+export const TRAVEL_MODES = TravelModeSchema.options;
+
 export const ManeuverSchema = z.object({
   instruction: z.string().optional(),
   type: z.string().optional(),

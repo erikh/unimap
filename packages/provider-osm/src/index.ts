@@ -86,6 +86,9 @@ class OsmGeocoding implements GeocodingService {
 }
 
 class OsmRouting implements RoutingService {
+  // OSRM has driving/foot/bike profiles only — no public-transit engine.
+  readonly travelModes = ["DRIVE", "WALK", "BICYCLE"] as const;
+
   constructor(private readonly opts: ResolvedOsmOptions) {}
 
   async route(request: RouteRequest): Promise<RouteResult> {

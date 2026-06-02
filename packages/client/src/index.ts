@@ -13,9 +13,11 @@ import {
   SuggestionSchema,
   TileSourceSchema,
   RouteResultSchema,
+  TravelModeSchema,
   ValidationError,
   type AutocompleteRequest,
   type Capability,
+  type TravelMode,
   type GeocodeQuery,
   type GeocodeResult,
   type GeocodingService,
@@ -126,6 +128,10 @@ export class UnimapClient implements GeocodingService, RoutingService, PlacesSer
     return this.send("GET", "/v1/capabilities", z.record(z.array(z.string()))) as Promise<
       Record<Capability, string[]>
     >;
+  }
+  /** Travel modes at least one configured provider can serve. */
+  routingModes(): Promise<TravelMode[]> {
+    return this.send("GET", "/v1/routing-modes", z.array(TravelModeSchema));
   }
 
   private async send<S extends ZodTypeAny>(

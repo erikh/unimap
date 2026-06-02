@@ -15,6 +15,7 @@ import type {
   StaticMapResult,
   Suggestion,
   TileSource,
+  TravelMode,
 } from "./model";
 
 /** Address ⇄ coordinates. */
@@ -27,6 +28,12 @@ export interface GeocodingService {
 export interface RoutingService {
   route(request: RouteRequest): Promise<RouteResult>;
   matrix(request: MatrixRequest): Promise<Matrix>;
+  /**
+   * Travel modes this provider can serve. When omitted, the provider is
+   * assumed to support every mode. The client uses this to skip providers
+   * that cannot satisfy a requested mode (e.g. OSRM has no TRANSIT engine).
+   */
+  readonly travelModes?: readonly TravelMode[];
 }
 
 /** Place search, autocomplete, and details. */

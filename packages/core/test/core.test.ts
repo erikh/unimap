@@ -8,6 +8,7 @@ import {
   type GeocodeResult,
   type LatLngTuple,
   type Provider,
+  type RouteResult,
 } from "@unimap/core";
 
 const attribution = { provider: "test", text: "Test" };
@@ -93,5 +94,70 @@ describe("MapsClient", () => {
   it("throws NotSupported when no provider has the capability", async () => {
     const client = new MapsClient({ providers: [{ id: "a", attribution }] });
     await expect(client.geocode({ query: "x" })).rejects.toThrow(/capability/);
+  });
+
+  describe("mode-aware routing", () => {
+    const emptyResult: RouteResult = { routes: [], attribution };
+    const routeReq = {
+      origin: { lat: 0, lng: 0 },
+      destination: { lat: 1, lng: 1 },
+      waypoints: [],
+      alternatives: false,
+      avoid: [],
+    };
+
+    // A provider that only serves DRIVE/WALK/BICYCLE, like OSRM.
+    const noTransit: Provider = {
+      id: "osm",
+      attribution,
+      routing: {
+        travelModes: ["DRIVE", "WALK", "BICYCLE"],
+        route: async () => emptyResult,
+        matrix: async () => ({ origins: [], destinations: [], rows: [], attribution }),
+      },
+    };
+    // A provider with no declared modes serves everything.
+    const allModes: Provider = {
+      id: "google",
+      attribution,
+      routing: {
+        route: async () => emptyResult,
+        matrix: async () => ({ origins: [], destinations: [], rows: [], attribution }),
+      },
+    };
+
+    it("skips providers that can't serve the requested mode", async () => {
+      const tried: string[] = [];
+      const transitOnly: Provider = {
+        id: "google",
+        attribution,
+        routing: {
+          route: async () => {
+            tried.push("google");
+            return emptyResult;
+          },
+          matrix: async () => ({ origins: [], destinations: [], rows: [], attribution }),
+        },
+      };
+      const client = new MapsClient({ providers: [noTransit, transitOnly] });
+      await client.route({ ...routeReq, travelMode: "TRANSIT" });
+      // OSM is skipped entirely (not even attempted), TRANSIT goes to google.
+      expect(tried).toEqual(["google"]);
+    });
+
+    it("throws NotSupported when no provider serves the mode", async () => {
+      const client = new MapsClient({ providers: [noTransit] });
+      await expect(client.route({ ...routeReq, travelMode: "TRANSIT" })).rejects.toThrow(/routing/);
+    });
+
+    it("reports the union of serviceable modes", () => {
+      expect(new MapsClient({ providers: [noTransit] }).routingModes()).toEqual(["DRIVE", "WALK", "BICYCLE"]);
+      expect(new MapsClient({ providers: [noTransit, allModes] }).routingModes()).toEqual([
+        "DRIVE",
+        "WALK",
+        "BICYCLE",
+        "TRANSIT",
+      ]);
+    });
   });
 });

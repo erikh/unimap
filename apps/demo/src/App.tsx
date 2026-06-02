@@ -23,15 +23,37 @@ interface RouteState {
   route?: Route;
 }
 
-const MODES: TravelMode[] = ["DRIVE", "WALK", "BICYCLE", "TRANSIT"];
+// Modes shown before the proxy reports what its providers can actually serve.
+// TRANSIT only appears once a transit-capable provider (e.g. Google) is configured.
+const DEFAULT_MODES: TravelMode[] = ["DRIVE", "WALK", "BICYCLE"];
 
 function DirectionsPanel(): JSX.Element {
   const client = useMapsClient();
   const [from, setFrom] = useState("1600 Amphitheatre Parkway, Mountain View");
   const [to, setTo] = useState("Ferry Building, San Francisco");
   const [mode, setMode] = useState<TravelMode>("DRIVE");
+  const [modes, setModes] = useState<TravelMode[]>(DEFAULT_MODES);
   const [state, setState] = useState<RouteState>({});
   const viewRef = useRef<MapView | null>(null);
+
+  // Ask the proxy which travel modes its providers can actually serve, so we
+  // never offer a mode (e.g. TRANSIT on an OSRM-only deployment) that errors.
+  useEffect(() => {
+    let cancelled = false;
+    client
+      .routingModes()
+      .then((available) => {
+        if (cancelled || available.length === 0) return;
+        setModes(available);
+        setMode((current) => (available.includes(current) ? current : available[0]));
+      })
+      .catch(() => {
+        /* keep DEFAULT_MODES if the proxy can't be reached */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [client]);
 
   async function getDirections(e: React.FormEvent): Promise<void> {
     e.preventDefault();
@@ -97,7 +119,7 @@ function DirectionsPanel(): JSX.Element {
         />
         <div style={{ display: "flex", gap: 8 }}>
           <select value={mode} onChange={(e) => setMode(e.target.value as TravelMode)} style={{ flex: 1 }}>
-            {MODES.map((m) => (
+            {modes.map((m) => (
               <option key={m} value={m}>
                 {m[0] + m.slice(1).toLowerCase()}
               </option>

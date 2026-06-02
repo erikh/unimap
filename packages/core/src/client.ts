@@ -16,7 +16,9 @@ import type {
   StaticMapResult,
   Suggestion,
   TileSource,
+  TravelMode,
 } from "./model";
+import { TRAVEL_MODES } from "./model";
 import { NotSupportedError, ProviderError } from "./errors";
 
 export interface FallbackInfo {
@@ -66,8 +68,22 @@ export class MapsClient {
     return chain;
   }
 
-  private async run<T>(capability: Capability, fn: (provider: Provider) => Promise<T> | T): Promise<T> {
-    const chain = this.chain(capability);
+  /**
+   * Routing chain restricted to providers that can serve `mode`. A provider
+   * that does not declare `travelModes` is assumed to support every mode.
+   */
+  private routingChain(mode: TravelMode): Provider[] {
+    return this.chain("routing").filter((p) => {
+      const modes = p.routing!.travelModes;
+      return !modes || modes.includes(mode);
+    });
+  }
+
+  private async run<T>(
+    capability: Capability,
+    fn: (provider: Provider) => Promise<T> | T,
+    chain: Provider[] = this.chain(capability),
+  ): Promise<T> {
     if (chain.length === 0) {
       throw new NotSupportedError(`No configured provider supports capability "${capability}"`);
     }
@@ -92,10 +108,10 @@ export class MapsClient {
     return this.run("geocoding", (p) => p.geocoding!.reverseGeocode(query));
   }
   route(request: RouteRequest): Promise<RouteResult> {
-    return this.run("routing", (p) => p.routing!.route(request));
+    return this.run("routing", (p) => p.routing!.route(request), this.routingChain(request.travelMode));
   }
   matrix(request: MatrixRequest): Promise<Matrix> {
-    return this.run("routing", (p) => p.routing!.matrix(request));
+    return this.run("routing", (p) => p.routing!.matrix(request), this.routingChain(request.travelMode));
   }
   search(request: PlaceSearchRequest): Promise<Place[]> {
     return this.run("places", (p) => p.places!.search(request));
@@ -111,6 +127,17 @@ export class MapsClient {
   }
   tileSource(): Promise<TileSource> {
     return this.run("tiles", (p) => Promise.resolve(p.tiles!.tileSource()));
+  }
+
+  /** Travel modes that at least one configured routing provider can serve. */
+  routingModes(): TravelMode[] {
+    const chain = this.chain("routing");
+    return TRAVEL_MODES.filter((mode) =>
+      chain.some((p) => {
+        const modes = p.routing!.travelModes;
+        return !modes || modes.includes(mode);
+      }),
+    );
   }
 
   /** Map of capability → ordered ids of providers that can serve it. */

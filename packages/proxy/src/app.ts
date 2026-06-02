@@ -125,6 +125,7 @@ export function createProxyApp(config: ProxyConfig): Hono {
     }),
   );
   app.get("/v1/capabilities", (c) => c.json(client.capabilities()));
+  app.get("/v1/routing-modes", (c) => c.json(client.routingModes()));
 
   // --- geocoding -----------------------------------------------------------
   app.post("/v1/geocode", async (c) => {
