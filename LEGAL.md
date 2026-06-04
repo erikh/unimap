@@ -55,7 +55,7 @@ have assessed the risk.
 
 The proxy is network-facing AGPL software. Section 13 requires that users interacting with it over a
 network be offered the **Corresponding Source**. The proxy exposes `GET /source` (configure the link
-with `UNIMAP_SOURCE_URL`), and the demo links to it. If you modify and deploy UniMap, keep that
+with `UNIMAP_SOURCE_URL`), and the UI links to it. If you modify and deploy UniMap, keep that
 offer accurate and pointing at *your* modified source.
 
 ## 6. Dependencies

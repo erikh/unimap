@@ -1,4 +1,4 @@
-# UniMap demo
+# UniMap UI
 
 A minimal Vite + React app: search an address (through the proxy, across any provider) and see
 results on a MapLibre/OSM basemap via the unified `MapCanvas`.
@@ -12,7 +12,7 @@ Easiest — one command from the repo root starts the API (proxy, :8787) and thi
 together, wired to each other:
 
 ```bash
-npm run dev:ui      # then open http://localhost:5173
+npm run dev         # then open http://localhost:5173
 ```
 
 Or run the pieces yourself:
@@ -21,8 +21,8 @@ Or run the pieces yourself:
 # 1. From the repo root, start the proxy (the API; no credentials needed):
 npm run dev:proxy     # unified proxy on :8787, backed by OSM by default
 
-# 2. Start this demo (defaults to the :8787 API; override with VITE_PROXY_URL):
-cd apps/demo
+# 2. Start this UI (defaults to the :8787 API; override with VITE_PROXY_URL):
+cd apps/ui
 npm install
 npm run dev           # http://localhost:5173
 ```
@@ -37,7 +37,7 @@ VITE_PROXY_URL=http://192.168.1.50:8787 npm run dev   # then open http://192.168
 Or bring up everything with Docker from the repo root:
 
 ```bash
-docker compose up        # proxy + mock + demo at http://localhost:5173
+docker compose up        # proxy + mock + ui at http://localhost:5173
 ```
 
 Switch providers by configuring credentials on the proxy (`.env`) and pinning a provider with

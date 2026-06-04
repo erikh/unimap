@@ -4,7 +4,7 @@ import react from "@vitejs/plugin-react";
 
 const pkg = (p: string): string => fileURLToPath(new URL(p, import.meta.url));
 
-// The demo is not an npm workspace; alias @unimap/* straight to source so it
+// The UI is not an npm workspace; alias @unimap/* straight to source so it
 // builds inside the monorepo without publishing anything.
 export default defineConfig({
   plugins: [react()],

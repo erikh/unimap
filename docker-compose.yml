@@ -1,5 +1,5 @@
 # UniMap full stack.
-#   docker compose up                 -> mock + proxy + demo (no credentials needed)
+#   docker compose up                 -> mock + proxy + ui (no credentials needed)
 #   docker compose --profile osm up   -> also start a self-hosted OpenStreetMap stack
 #   docker compose --profile test run --rm test   -> run the integration suite against the mock
 name: unimap
@@ -40,10 +40,10 @@ services:
     depends_on:
       - mock
 
-  demo:
+  ui:
     build:
       context: .
-      dockerfile: docker/Dockerfile.demo
+      dockerfile: docker/Dockerfile.ui
       args:
         VITE_PROXY_URL: "${VITE_PROXY_URL:-http://localhost:8787}"
     ports:
