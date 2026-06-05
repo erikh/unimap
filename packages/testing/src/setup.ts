@@ -15,6 +15,7 @@ export interface MockEnv {
     photonUrl: string;
     overpassUrl: string;
     tileUrl: string;
+    motisUrl: string;
   };
 }
 
@@ -47,6 +48,7 @@ export async function setupMock(options: SetupOptions = {}): Promise<MockEnv> {
       photonUrl: `${base}/osm/photon`,
       overpassUrl: `${base}/osm/overpass`,
       tileUrl: `${base}/osm/tiles/{z}/{x}/{y}.png`,
+      motisUrl: `${base}/motis`,
     },
   };
 }

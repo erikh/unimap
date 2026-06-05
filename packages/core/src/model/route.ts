@@ -25,11 +25,54 @@ export const StepSchema = z.object({
 });
 export type Step = z.infer<typeof StepSchema>;
 
+/** Neutral per-leg travel mode. Transit engines surface many vehicle types; we
+ * fold them onto this small set. A leg with no `mode` predates transit support. */
+export const LegModeSchema = z.enum([
+  "WALK",
+  "BICYCLE",
+  "DRIVE",
+  "BUS",
+  "TRAM",
+  "SUBWAY",
+  "RAIL",
+  "FERRY",
+  "OTHER",
+]);
+export type LegMode = z.infer<typeof LegModeSchema>;
+
+/** Transit-specific detail for a public-transport leg (bus/train/etc.). Absent
+ * on road legs. Times are ISO-8601 strings as reported by the transit engine. */
+export const TransitLegSchema = z.object({
+  /** Short public-facing line name, e.g. "S7", "M14". */
+  line: z.string().optional(),
+  /** Long route name, e.g. "Bakerloo line". */
+  lineName: z.string().optional(),
+  /** Destination sign on the vehicle. */
+  headsign: z.string().optional(),
+  /** Operating agency, e.g. "S-Bahn Berlin GmbH". */
+  agency: z.string().optional(),
+  /** Route colour as a hex string without `#`, e.g. "816da6". */
+  color: z.string().optional(),
+  departureTime: z.string().optional(),
+  arrivalTime: z.string().optional(),
+  /** Boarding stop name. */
+  fromStop: z.string().optional(),
+  /** Alighting stop name. */
+  toStop: z.string().optional(),
+  /** Number of intermediate stops between board and alight. */
+  numStops: z.number().int().nonnegative().optional(),
+});
+export type TransitLeg = z.infer<typeof TransitLegSchema>;
+
 export const LegSchema = z.object({
   distanceMeters: z.number().nonnegative(),
   durationSeconds: z.number().nonnegative(),
   start: LatLngSchema.optional(),
   end: LatLngSchema.optional(),
+  /** Travel mode for this leg. A multimodal route mixes modes across legs. */
+  mode: LegModeSchema.optional(),
+  /** Present only when `mode` is a public-transport vehicle. */
+  transit: TransitLegSchema.optional(),
   steps: z.array(StepSchema).default([]),
 });
 export type Leg = z.infer<typeof LegSchema>;

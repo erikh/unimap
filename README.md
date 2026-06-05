@@ -60,6 +60,11 @@ They share only the `@unimap/core` types; you can use either alone.
 | Apple | ✅ | ✅ | ✅ | ✅ (Web Snapshot) | — (SDK-locked) |
 | OSM | ✅ | ✅ | ✅ | — | ✅ |
 
+OSM routing covers `DRIVE`/`WALK`/`BICYCLE` via OSRM **and keyless `TRANSIT`** via MOTIS — defaulting
+to the free public [Transitous](https://transitous.org) instance, overridable with `TRANSIT_URL`
+(point it at a self-hosted MOTIS/OpenTripPlanner for volume). So public-transport directions work
+with no API keys at all.
+
 `MapsClient`/`UnimapClient` route each capability to the first configured provider that supports it
 and fall back to the next on error.
 

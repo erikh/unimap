@@ -1,9 +1,15 @@
 import {
   NotSupportedError,
+  decodePolyline,
+  encodePolyline,
+  haversineMeters,
   type Address,
   type AddressComponent,
   type Attribution,
   type GeocodeResult,
+  type LatLngTuple,
+  type Leg,
+  type LegMode,
   type Place,
   type Route,
   type Suggestion,
@@ -201,6 +207,140 @@ export function osrmToRoute(route: OsrmRoute): Route {
           : undefined,
       })),
     })),
+    warnings: [],
+    attribution: OSM_ATTRIBUTION,
+  };
+}
+
+// --- MOTIS transit (the public Transitous engine) ----------------------------
+
+export interface MotisPlace {
+  name?: string;
+  stopId?: string;
+  lat: number;
+  lon: number;
+  departure?: string;
+  arrival?: string;
+}
+export interface MotisLegGeometry {
+  points: string;
+  length?: number;
+  precision?: number;
+}
+export interface MotisLeg {
+  mode: string;
+  from?: MotisPlace;
+  to?: MotisPlace;
+  duration?: number;
+  startTime?: string;
+  endTime?: string;
+  distance?: number;
+  headsign?: string;
+  routeShortName?: string;
+  routeLongName?: string;
+  routeColor?: string;
+  agencyName?: string;
+  tripId?: string;
+  intermediateStops?: MotisPlace[];
+  legGeometry?: MotisLegGeometry;
+}
+export interface MotisItinerary {
+  duration?: number;
+  startTime?: string;
+  endTime?: string;
+  transfers?: number;
+  legs?: MotisLeg[];
+}
+export interface MotisPlanResponse {
+  itineraries?: MotisItinerary[];
+}
+
+/** MOTIS surfaces many GTFS vehicle types; fold them onto our neutral leg modes. */
+const MOTIS_MODE_TO_LEG: Record<string, LegMode> = {
+  WALK: "WALK",
+  BIKE: "BICYCLE",
+  BICYCLE: "BICYCLE",
+  CAR: "DRIVE",
+  BUS: "BUS",
+  COACH: "BUS",
+  TRAM: "TRAM",
+  STREETCAR: "TRAM",
+  SUBWAY: "SUBWAY",
+  METRO: "SUBWAY",
+  FERRY: "FERRY",
+  RAIL: "RAIL",
+  SUBURBAN: "RAIL",
+  REGIONAL_RAIL: "RAIL",
+  REGIONAL_FAST_RAIL: "RAIL",
+  HIGHSPEED_RAIL: "RAIL",
+  LONG_DISTANCE: "RAIL",
+  NIGHT_RAIL: "RAIL",
+};
+
+export function motisModeToLegMode(mode: string): LegMode {
+  return MOTIS_MODE_TO_LEG[mode.toUpperCase()] ?? "OTHER";
+}
+
+const isTransitLeg = (mode: LegMode): boolean =>
+  mode !== "WALK" && mode !== "BICYCLE" && mode !== "DRIVE";
+
+function pathLengthMeters(points: LatLngTuple[]): number {
+  let total = 0;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1]!;
+    const b = points[i]!;
+    total += haversineMeters({ lat: a[0], lng: a[1] }, { lat: b[0], lng: b[1] });
+  }
+  return total;
+}
+
+/** Map one MOTIS itinerary onto a canonical multimodal Route. */
+export function motisToRoute(itinerary: MotisItinerary): Route {
+  const motisLegs = itinerary.legs ?? [];
+  const legPoints = motisLegs.map((leg) =>
+    leg.legGeometry?.points ? decodePolyline(leg.legGeometry.points, leg.legGeometry.precision ?? 5) : [],
+  );
+
+  const legs: Leg[] = motisLegs.map((leg, i) => {
+    const points = legPoints[i]!;
+    const mode = motisModeToLegMode(leg.mode);
+    // MOTIS omits leg distance — derive it from the decoded geometry.
+    const distanceMeters = leg.distance ?? pathLengthMeters(points);
+    return {
+      distanceMeters,
+      durationSeconds: leg.duration ?? 0,
+      start: leg.from ? { lat: leg.from.lat, lng: leg.from.lon } : undefined,
+      end: leg.to ? { lat: leg.to.lat, lng: leg.to.lon } : undefined,
+      mode,
+      transit: isTransitLeg(mode)
+        ? {
+            line: leg.routeShortName || undefined,
+            lineName: leg.routeLongName || undefined,
+            headsign: leg.headsign || undefined,
+            agency: leg.agencyName || undefined,
+            color: leg.routeColor || undefined,
+            departureTime: leg.startTime,
+            arrivalTime: leg.endTime,
+            fromStop: leg.from?.name,
+            toStop: leg.to?.name,
+            numStops: leg.intermediateStops?.length,
+          }
+        : undefined,
+      polyline: points.length ? encodePolyline(points) : undefined,
+      steps: [],
+    };
+  });
+
+  const allPoints = legPoints.flat();
+  const distanceMeters = legs.reduce((sum, leg) => sum + leg.distanceMeters, 0);
+  const durationSeconds =
+    itinerary.duration ?? legs.reduce((sum, leg) => sum + leg.durationSeconds, 0);
+
+  return {
+    distanceMeters,
+    durationSeconds,
+    polyline: allPoints.length ? encodePolyline(allPoints) : undefined,
+    legs,
     warnings: [],
     attribution: OSM_ATTRIBUTION,
   };

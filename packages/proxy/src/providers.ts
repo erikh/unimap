@@ -55,6 +55,7 @@ export function buildProvidersFromEnv(env: Env = process.env): BuiltProviders {
       photonUrl: env.OSM_PHOTON_URL,
       overpassUrl: env.OSM_OVERPASS_URL,
       tileUrl: env.OSM_TILE_URL,
+      motisUrl: env.TRANSIT_URL,
       userAgent: env.OSM_USER_AGENT,
     }),
   );

@@ -9,6 +9,11 @@ export interface OsmProviderOptions {
   overpassUrl?: string;
   /** Raster tile XYZ template, default OSM standard tiles. */
   tileUrl?: string;
+  /**
+   * MOTIS transit-routing base, default the public Transitous instance
+   * (https://api.transitous.org). Powers keyless TRANSIT routing.
+   */
+  motisUrl?: string;
   /** Identifies your app — required by the OSM/Nominatim usage policies. */
   userAgent?: string;
   /** Injectable fetch for tests / non-global environments. */
@@ -21,6 +26,7 @@ export interface ResolvedOsmOptions {
   photonUrl: string;
   overpassUrl: string;
   tileUrl: string;
+  motisUrl: string;
   userAgent: string;
   fetchImpl?: typeof fetch;
 }
@@ -34,6 +40,7 @@ export function resolveOsmOptions(options: OsmProviderOptions = {}): ResolvedOsm
     photonUrl: trimSlash(options.photonUrl ?? "https://photon.komoot.io"),
     overpassUrl: trimSlash(options.overpassUrl ?? "https://overpass-api.de/api"),
     tileUrl: options.tileUrl ?? "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    motisUrl: trimSlash(options.motisUrl ?? "https://api.transitous.org"),
     userAgent: options.userAgent ?? "unimap/0.1 (+https://github.com/unimap)",
     fetchImpl: options.fetchImpl,
   };

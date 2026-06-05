@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { setupMock, type MockEnv } from "@unimap/testing";
-import { createOsmProvider } from "@unimap/provider-osm";
-import type { Provider } from "@unimap/core";
+import { createOsmProvider, motisToRoute, motisModeToLegMode } from "@unimap/provider-osm";
+import { encodePolyline, type LatLngTuple, type Provider } from "@unimap/core";
 
 let env: MockEnv;
 let osm: Provider;
@@ -22,6 +22,7 @@ beforeAll(async () => {
     photonUrl: env.osm.photonUrl,
     overpassUrl: env.osm.overpassUrl,
     tileUrl: env.osm.tileUrl,
+    motisUrl: env.osm.motisUrl,
   });
 });
 
@@ -91,9 +92,32 @@ describe("OSM routing", () => {
     expect(matrix.rows[0]![0]!.distanceMeters).toBeGreaterThan(0);
   });
 
-  it("rejects TRANSIT as unsupported", async () => {
+  it("routes TRANSIT via MOTIS into a multimodal route", async () => {
+    const result = await osm.routing!.route({
+      origin: { lat: 37.42, lng: -122.08 },
+      destination: { lat: 37.77, lng: -122.41 },
+      waypoints: [],
+      travelMode: "TRANSIT",
+      alternatives: false,
+      avoid: [],
+    });
+    const route = result.routes[0]!;
+    expect(route.durationSeconds).toBe(1_800);
+    expect(route.distanceMeters).toBeGreaterThan(0);
+    expect(route.attribution.provider).toBe("osm");
+    expect(route.polyline).toBeTruthy();
+    // walk → S-Bahn "S7" → walk
+    expect(route.legs.map((l) => l.mode)).toEqual(["WALK", "RAIL", "WALK"]);
+    const transitLeg = route.legs.find((l) => l.transit)!;
+    expect(transitLeg.transit!.line).toBe("S7");
+    expect(transitLeg.transit!.agency).toMatch(/S-Bahn/);
+    expect(transitLeg.transit!.numStops).toBe(1);
+  });
+
+  it("throws NotFound when MOTIS returns no itineraries", async () => {
+    const empty = createOsmProvider({ motisUrl: env.osm.motisUrl, fetchImpl: scenarioFetch("empty") });
     await expect(
-      osm.routing!.route({
+      empty.routing!.route({
         origin: { lat: 1, lng: 1 },
         destination: { lat: 2, lng: 2 },
         waypoints: [],
@@ -101,7 +125,50 @@ describe("OSM routing", () => {
         alternatives: false,
         avoid: [],
       }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("does not support a TRANSIT matrix", async () => {
+    await expect(
+      osm.routing!.matrix({
+        origins: [{ lat: 1, lng: 1 }],
+        destinations: [{ lat: 2, lng: 2 }],
+        travelMode: "TRANSIT",
+      }),
     ).rejects.toThrow(/TRANSIT/);
+  });
+});
+
+describe("MOTIS mapping", () => {
+  it("folds GTFS vehicle types onto neutral leg modes", () => {
+    expect(motisModeToLegMode("SUBURBAN")).toBe("RAIL");
+    expect(motisModeToLegMode("SUBWAY")).toBe("SUBWAY");
+    expect(motisModeToLegMode("BUS")).toBe("BUS");
+    expect(motisModeToLegMode("WALK")).toBe("WALK");
+    expect(motisModeToLegMode("FUNICULAR")).toBe("OTHER");
+  });
+
+  it("decodes leg geometry at the declared precision", () => {
+    const points: LatLngTuple[] = [
+      [37.0, -122.0],
+      [37.1, -122.1],
+    ];
+    const route = motisToRoute({
+      duration: 600,
+      legs: [
+        {
+          mode: "SUBURBAN",
+          duration: 600,
+          routeShortName: "S7",
+          legGeometry: { points: encodePolyline(points, 7), precision: 7 },
+        },
+      ],
+    });
+    expect(route.legs[0]!.mode).toBe("RAIL");
+    expect(route.legs[0]!.transit!.line).toBe("S7");
+    // ~14 km when decoded at precision 7; decoding at 5 would be 100× off.
+    expect(route.legs[0]!.distanceMeters).toBeGreaterThan(10_000);
+    expect(route.legs[0]!.distanceMeters).toBeLessThan(20_000);
   });
 });
 

@@ -27,10 +27,12 @@ import {
   nominatimToPlace,
   osrmProfile,
   osrmToRoute,
+  motisToRoute,
   photonToPlace,
   photonToSuggestion,
   OSM_ATTRIBUTION,
   type NominatimItem,
+  type MotisPlanResponse,
   type OsrmRouteResponse,
   type OsrmTableResponse,
   type PhotonResponse,
@@ -42,6 +44,8 @@ export {
   nominatimToGeocode,
   nominatimToPlace,
   osrmToRoute,
+  motisToRoute,
+  motisModeToLegMode,
   photonToPlace,
 } from "./mappers";
 
@@ -86,12 +90,14 @@ class OsmGeocoding implements GeocodingService {
 }
 
 class OsmRouting implements RoutingService {
-  // OSRM has driving/foot/bike profiles only — no public-transit engine.
-  readonly travelModes = ["DRIVE", "WALK", "BICYCLE"] as const;
+  // OSRM covers driving/foot/bike; TRANSIT is served by MOTIS (public Transitous
+  // by default), so the keyless tier can offer public-transport routing too.
+  readonly travelModes = ["DRIVE", "WALK", "BICYCLE", "TRANSIT"] as const;
 
   constructor(private readonly opts: ResolvedOsmOptions) {}
 
   async route(request: RouteRequest): Promise<RouteResult> {
+    if (request.travelMode === "TRANSIT") return this.routeViaMotis(request);
     const profile = osrmProfile(request.travelMode);
     const points = [request.origin, ...request.waypoints, request.destination];
     const coords = points.map((p) => `${p.lng},${p.lat}`).join(";");
@@ -104,6 +110,22 @@ class OsmRouting implements RoutingService {
       throw new NotFoundError("No route found", { providerId: "osm" });
     }
     return { routes: data.routes.map(osrmToRoute), attribution: OSM_ATTRIBUTION };
+  }
+
+  /** TRANSIT routing via the MOTIS plan API. Point-to-point — waypoints are
+   * not part of the MOTIS plan model, so they're ignored. */
+  private async routeViaMotis(request: RouteRequest): Promise<RouteResult> {
+    const url = new URL(`${this.opts.motisUrl}/api/v6/plan`);
+    url.searchParams.set("fromPlace", `${request.origin.lat},${request.origin.lng}`);
+    url.searchParams.set("toPlace", `${request.destination.lat},${request.destination.lng}`);
+    url.searchParams.set("transitModes", "TRANSIT");
+    if (request.departureTime) url.searchParams.set("time", request.departureTime);
+    const data = await httpJson<MotisPlanResponse>(url, { headers: headers(this.opts) }, this.ctx());
+    const itineraries = data.itineraries ?? [];
+    if (!itineraries.length) {
+      throw new NotFoundError("No transit route found", { providerId: "osm" });
+    }
+    return { routes: itineraries.map(motisToRoute), attribution: OSM_ATTRIBUTION };
   }
 
   async matrix(request: MatrixRequest): Promise<Matrix> {

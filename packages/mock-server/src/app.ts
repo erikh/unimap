@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { scenarioMiddleware } from "./scenarios";
 import { osmRoutes } from "./osm";
+import { motisRoutes } from "./motis";
 import { googleRoutes } from "./google";
 import { appleRoutes, type AppleMockOptions } from "./apple";
 import { unofficialRoutes } from "./unofficial";
@@ -11,7 +12,7 @@ export interface MockOptions {
 
 /**
  * Build the full mock app. Providers are mounted under `/google`, `/apple`,
- * `/osm`; adapters point their base URLs at these prefixes in tests.
+ * `/osm`, `/motis`; adapters point their base URLs at these prefixes in tests.
  */
 export function createMockApp(options: MockOptions = {}): Hono {
   const app = new Hono();
@@ -20,6 +21,7 @@ export function createMockApp(options: MockOptions = {}): Hono {
   app.route("/google", googleRoutes());
   app.route("/apple", appleRoutes(options.apple ?? {}));
   app.route("/osm", osmRoutes());
+  app.route("/motis", motisRoutes());
   app.route("/unofficial", unofficialRoutes());
   return app;
 }

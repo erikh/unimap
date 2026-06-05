@@ -4,6 +4,7 @@ import {
   boundsFromPoints,
   polylineToLatLngs,
   type LatLng,
+  type Leg,
   type Route,
   type TravelMode,
 } from "@unimap/core";
@@ -24,8 +25,69 @@ interface RouteState {
 }
 
 // Modes shown before the proxy reports what its providers can actually serve.
-// TRANSIT only appears once a transit-capable provider (e.g. Google) is configured.
+// TRANSIT appears once any routing provider serves it — including the keyless
+// OSM tier via MOTIS (public Transitous), not just keyed providers.
 const DEFAULT_MODES: TravelMode[] = ["DRIVE", "WALK", "BICYCLE"];
+
+const MODE_ICON: Record<string, string> = {
+  WALK: "🚶",
+  BICYCLE: "🚲",
+  DRIVE: "🚗",
+  BUS: "🚌",
+  TRAM: "🚊",
+  SUBWAY: "🚇",
+  RAIL: "🚆",
+  FERRY: "⛴️",
+  OTHER: "🚍",
+};
+
+function fmtTime(iso?: string): string {
+  if (!iso) return "";
+  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+const titleCase = (s: string): string => s[0] + s.slice(1).toLowerCase();
+
+// One row per leg: transit legs show a coloured line chip + headsign + times;
+// road legs (walk/bike/drive) show a mode + duration/distance summary.
+function LegRow({ leg }: { leg: Leg }): JSX.Element {
+  const icon = MODE_ICON[leg.mode ?? "OTHER"] ?? "•";
+  const t = leg.transit;
+  return (
+    <li style={{ listStyle: "none", display: "flex", gap: 8, alignItems: "baseline", margin: "8px 0" }}>
+      <span style={{ fontSize: 16 }}>{icon}</span>
+      <span style={{ fontSize: 13 }}>
+        {t ? (
+          <>
+            <span
+              style={{
+                background: t.color ? `#${t.color}` : "#444",
+                color: "#fff",
+                borderRadius: 4,
+                padding: "1px 6px",
+                fontWeight: 600,
+              }}
+            >
+              {t.line ?? titleCase(leg.mode ?? "Transit")}
+            </span>{" "}
+            {t.headsign && <span style={{ color: "#555" }}>→ {t.headsign}</span>}
+            <div style={{ color: "#999", fontSize: 12 }}>
+              {fmtTime(t.departureTime)}
+              {t.arrivalTime && `–${fmtTime(t.arrivalTime)}`}
+              {t.numStops != null && ` · ${t.numStops + 1} stops`}
+              {t.agency && ` · ${t.agency}`}
+            </div>
+          </>
+        ) : (
+          <>
+            {titleCase(leg.mode ?? "Leg")} · {Math.round(leg.durationSeconds / 60)} min{" "}
+            <span style={{ color: "#999" }}>({(leg.distanceMeters / 1000).toFixed(1)} km)</span>
+          </>
+        )}
+      </span>
+    </li>
+  );
+}
 
 function DirectionsPanel(): JSX.Element {
   const client = useMapsClient();
@@ -96,6 +158,7 @@ function DirectionsPanel(): JSX.Element {
     state.path && state.path.length > 1 ? [{ path: state.path, color: "#2563eb", width: 5 }] : [];
 
   const steps = state.route?.legs.flatMap((leg) => leg.steps) ?? [];
+  const isTransit = state.route?.legs.some((leg) => leg.transit) ?? false;
 
   const sidebar = (
     <div style={{ padding: 16, fontFamily: "system-ui, sans-serif" }}>
@@ -139,14 +202,22 @@ function DirectionsPanel(): JSX.Element {
             {Math.round(state.route.durationSeconds / 60)} min{" "}
             <small style={{ color: "#888" }}>[{state.route.attribution.provider}]</small>
           </p>
-          <ol style={{ paddingLeft: 18, fontSize: 13, lineHeight: 1.5 }}>
-            {steps.map((s, i) => (
-              <li key={i}>
-                {s.maneuver?.instruction ?? "Continue"}{" "}
-                <span style={{ color: "#999" }}>({Math.round(s.distanceMeters)} m)</span>
-              </li>
-            ))}
-          </ol>
+          {isTransit ? (
+            <ul style={{ paddingLeft: 0, margin: 0 }}>
+              {state.route.legs.map((leg, i) => (
+                <LegRow key={i} leg={leg} />
+              ))}
+            </ul>
+          ) : (
+            <ol style={{ paddingLeft: 18, fontSize: 13, lineHeight: 1.5 }}>
+              {steps.map((s, i) => (
+                <li key={i}>
+                  {s.maneuver?.instruction ?? "Continue"}{" "}
+                  <span style={{ color: "#999" }}>({Math.round(s.distanceMeters)} m)</span>
+                </li>
+              ))}
+            </ol>
+          )}
         </>
       )}
     </div>

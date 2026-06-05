@@ -32,6 +32,29 @@ export const ROUTE = {
   polyline: encodePolyline(ROUTE_PATH),
 };
 
+/**
+ * A canonical transit itinerary (walk → S-Bahn "S7" → walk) for the MOTIS mock.
+ * Fixed ISO timestamps keep responses deterministic — no `Date.now()`, like the
+ * rest of the fixtures. Durations sum to 30 min (5 + 20 + 5).
+ */
+export const TRANSIT = {
+  departTime: "2026-01-01T08:00:00.000Z",
+  boardTime: "2026-01-01T08:05:00.000Z",
+  alightTime: "2026-01-01T08:25:00.000Z",
+  arriveTime: "2026-01-01T08:30:00.000Z",
+  durationSeconds: 1_800,
+  walkSeconds: 300,
+  rideSeconds: 1_200,
+  line: "S7",
+  headsign: "Ahrensfelde",
+  agency: "S-Bahn Berlin GmbH",
+  color: "816da6",
+  textColor: "ffffff",
+  routeType: 109,
+  boardStop: "Mountain View Station",
+  alightStop: "San Francisco Caltrain",
+};
+
 export const POI = {
   id: "ChIJ2eUgeAK6j4ARbn5u_wAGqWA",
   name: "Googleplex",

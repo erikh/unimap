@@ -36,6 +36,7 @@ surface.
 | **Google Maps Platform** | API key / OAuth required; the proxy holds it. Google restricts caching of most content — the proxy cache is **off by default** (`UNIMAP_CACHE_TTL_MS=0`). Attribution ("Powered by Google") is preserved. Basemap tiles are usable only via the Maps JS SDK. |
 | **Apple Maps** | ES256 JWT (from a MapKit `.p8`) is exchanged for a ~30-min access token; the private key stays in the proxy. 25k/day shared MapKit JS + Server API quota. Basemap is MapKit JS only. |
 | **OpenStreetMap** | Data is **ODbL** — attribution ("© OpenStreetMap contributors") is mandatory and always attached. The public Nominatim/OSRM/tile servers have strict [usage policies](https://operations.osmfoundation.org/policies/nominatim/) (rate limits, required `User-Agent`); self-host (compose `--profile osm`) for any real volume. |
+| **Transit (MOTIS/Transitous)** | Keyless `TRANSIT` routing defaults to the community-run [Transitous](https://transitous.org) MOTIS instance, which aggregates third-party **GTFS** feeds (each under its own agency's license). Coverage and availability are best-effort and rate-limited — self-host MOTIS/OpenTripPlanner (`TRANSIT_URL`) for production. Results carry the OSM attribution; surface agency credit from the returned `transit.agency` where required. |
 
 ## 4. Reverse-engineered / unofficial tier
 
