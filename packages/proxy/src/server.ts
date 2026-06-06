@@ -1,6 +1,16 @@
+import dns from "node:dns";
+import net from "node:net";
 import { serve } from "@hono/node-server";
 import { createProxyApp, type ProxyConfig } from "./app";
 import { buildProvidersFromEnv } from "./providers";
+
+// Some hosts advertise IPv6 (AAAA records) but have no working IPv6 egress.
+// Node's fetch then hangs trying IPv6 instead of falling back to IPv4 like curl
+// does, so every upstream provider call (Nominatim/OSRM/MOTIS) times out with
+// "fetch failed". Prefer IPv4 and disable Happy-Eyeballs auto-selection so we
+// connect over the family that actually works.
+dns.setDefaultResultOrder("ipv4first");
+if (typeof net.setDefaultAutoSelectFamily === "function") net.setDefaultAutoSelectFamily(false);
 
 export interface StartedProxy {
   url: string;
