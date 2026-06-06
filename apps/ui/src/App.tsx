@@ -20,8 +20,9 @@ interface RouteState {
   error?: string;
   origin?: LatLng;
   destination?: LatLng;
-  path?: LatLng[];
-  route?: Route;
+  /** All returned options (transit can yield several); `selected` picks one. */
+  routes?: Route[];
+  selected?: number;
 }
 
 // Modes shown before the proxy reports what its providers can actually serve.
@@ -47,6 +48,39 @@ function fmtTime(iso?: string): string {
 }
 
 const titleCase = (s: string): string => s[0] + s.slice(1).toLowerCase();
+
+/** The transit lines a route rides, in order — for compact option summaries. */
+function routeLines(route: Route): { icon: string; label: string; color?: string }[] {
+  return route.legs
+    .filter((l) => l.transit)
+    .map((l) => ({
+      icon: MODE_ICON[l.mode ?? "OTHER"] ?? "•",
+      label: l.transit!.line ?? titleCase(l.mode ?? "Transit"),
+      color: l.transit!.color,
+    }));
+}
+
+const firstDeparture = (route: Route): string | undefined =>
+  route.legs.find((l) => l.transit?.departureTime)?.transit?.departureTime;
+const lastArrival = (route: Route): string | undefined =>
+  [...route.legs].reverse().find((l) => l.transit?.arrivalTime)?.transit?.arrivalTime;
+
+function LineChip({ label, color }: { label: string; color?: string }): JSX.Element {
+  return (
+    <span
+      style={{
+        background: color ? `#${color}` : "#444",
+        color: "#fff",
+        borderRadius: 4,
+        padding: "0 5px",
+        fontSize: 11,
+        fontWeight: 600,
+      }}
+    >
+      {label}
+    </span>
+  );
+}
 
 // One row per leg: transit legs show a coloured line chip + headsign + times;
 // road legs (walk/bike/drive) show a mode + duration/distance summary.
@@ -132,33 +166,38 @@ function DirectionsPanel(): JSX.Element {
         destination: destination.location,
         travelMode: mode,
         waypoints: [],
-        alternatives: false,
+        alternatives: true,
         avoid: [],
       });
-      const route = routes[0];
-      const path = route?.polyline ? polylineToLatLngs(route.polyline) : [];
-      setState({ origin: origin.location, destination: destination.location, path, route });
+      setState({ origin: origin.location, destination: destination.location, routes, selected: 0 });
     } catch (err) {
       setState({ error: (err as Error).message });
     }
   }
 
-  // Fit the map to the route whenever a new one arrives.
+  const selected = state.selected ?? 0;
+  const route = state.routes?.[selected];
+  const path = useMemo(
+    () => (route?.polyline ? polylineToLatLngs(route.polyline) : []),
+    [route?.polyline],
+  );
+
+  // Fit the map to the selected route whenever it changes.
   useEffect(() => {
-    if (viewRef.current && state.path && state.path.length > 1) {
-      viewRef.current.fitBounds(boundsFromPoints(state.path), 60);
+    if (viewRef.current && path.length > 1) {
+      viewRef.current.fitBounds(boundsFromPoints(path), 60);
     }
-  }, [state.path]);
+  }, [path]);
 
   const markers: MarkerSpec[] = [];
   if (state.origin) markers.push({ location: state.origin, label: "A" });
   if (state.destination) markers.push({ location: state.destination, label: "B" });
 
   const polylines: PolylineSpec[] =
-    state.path && state.path.length > 1 ? [{ path: state.path, color: "#2563eb", width: 5 }] : [];
+    path.length > 1 ? [{ path, color: "#2563eb", width: 5 }] : [];
 
-  const steps = state.route?.legs.flatMap((leg) => leg.steps) ?? [];
-  const isTransit = state.route?.legs.some((leg) => leg.transit) ?? false;
+  const steps = route?.legs.flatMap((leg) => leg.steps) ?? [];
+  const isTransit = route?.legs.some((leg) => leg.transit) ?? false;
 
   const sidebar = (
     <div style={{ padding: 16, fontFamily: "system-ui, sans-serif" }}>
@@ -195,16 +234,61 @@ function DirectionsPanel(): JSX.Element {
       {state.loading && <p>Routing…</p>}
       {state.error && <p style={{ color: "crimson" }}>{state.error}</p>}
 
-      {state.route && (
+      {route && (
         <>
+          {state.routes && state.routes.length > 1 && (
+            <div style={{ marginTop: 16 }}>
+              <div style={{ fontSize: 12, color: "#888", marginBottom: 4 }}>
+                {state.routes.length} options
+              </div>
+              {state.routes.map((r, i) => {
+                const lines = routeLines(r);
+                const dep = firstDeparture(r);
+                const arr = lastArrival(r);
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setState((s) => ({ ...s, selected: i }))}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      textAlign: "left",
+                      border: `1px solid ${i === selected ? "#2563eb" : "#ddd"}`,
+                      background: i === selected ? "#eff6ff" : "#fff",
+                      borderRadius: 6,
+                      padding: "8px 10px",
+                      marginBottom: 6,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                      {lines.length === 0 && <span style={{ fontSize: 13 }}>Direct</span>}
+                      {lines.map((ln, j) => (
+                        <span key={j} style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
+                          {j > 0 && <span style={{ color: "#bbb" }}>→</span>}
+                          <span>{ln.icon}</span>
+                          <LineChip label={ln.label} color={ln.color} />
+                        </span>
+                      ))}
+                    </div>
+                    <div style={{ color: "#666", fontSize: 12, marginTop: 3 }}>
+                      <b>{Math.round(r.durationSeconds / 60)} min</b>
+                      {dep && ` · ${fmtTime(dep)}–${fmtTime(arr)}`}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <p style={{ marginTop: 16 }}>
-            <b>{(state.route.distanceMeters / 1000).toFixed(1)} km</b> ·{" "}
-            {Math.round(state.route.durationSeconds / 60)} min{" "}
-            <small style={{ color: "#888" }}>[{state.route.attribution.provider}]</small>
+            <b>{(route.distanceMeters / 1000).toFixed(1)} km</b> ·{" "}
+            {Math.round(route.durationSeconds / 60)} min{" "}
+            <small style={{ color: "#888" }}>[{route.attribution.provider}]</small>
           </p>
           {isTransit ? (
             <ul style={{ paddingLeft: 0, margin: 0 }}>
-              {state.route.legs.map((leg, i) => (
+              {route.legs.map((leg, i) => (
                 <LegRow key={i} leg={leg} />
               ))}
             </ul>

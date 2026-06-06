@@ -101,6 +101,8 @@ describe("OSM routing", () => {
       alternatives: false,
       avoid: [],
     });
+    // MOTIS returns several itineraries → several route options.
+    expect(result.routes.length).toBe(2);
     const route = result.routes[0]!;
     expect(route.durationSeconds).toBe(1_800);
     expect(route.distanceMeters).toBeGreaterThan(0);
@@ -112,6 +114,12 @@ describe("OSM routing", () => {
     expect(transitLeg.transit!.line).toBe("S7");
     expect(transitLeg.transit!.agency).toMatch(/S-Bahn/);
     expect(transitLeg.transit!.numStops).toBe(1);
+    // the second option is a distinct, slower U-Bahn itinerary
+    const second = result.routes[1]!;
+    expect(second.durationSeconds).toBe(2_160);
+    const secondTransit = second.legs.find((l) => l.transit)!;
+    expect(secondTransit.mode).toBe("SUBWAY");
+    expect(secondTransit.transit!.line).toBe("U5");
   });
 
   it("throws NotFound when MOTIS returns no itineraries", async () => {
