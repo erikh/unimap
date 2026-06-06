@@ -49,6 +49,23 @@ export interface UnimapClientOptions {
   fetchImpl?: typeof fetch;
 }
 
+/**
+ * Tidy a free-typed place query before geocoding. Notably rewrites the
+ * connector " in " to a comma ("801 Broadway in Oakland" → "801 Broadway,
+ * Oakland") — Nominatim otherwise matches "in Oakland" against the *town named*
+ * "Oakland City" (e.g. in Indiana) instead of the Oakland the user meant. Also
+ * collapses repeated commas/whitespace. Idempotent; safe on already-clean input.
+ */
+export function normalizeGeocodeQuery(text: string): string {
+  return text
+    .replace(/\s+in\s+/gi, ", ")
+    .replace(/\s*,\s*(?:,\s*)+/g, ", ")
+    .replace(/\s+/g, " ")
+    .replace(/\s*,\s*/g, ", ")
+    .replace(/^[\s,]+|[\s,]+$/g, "")
+    .trim();
+}
+
 interface ProxyErrorBody {
   error?: { code?: string; message?: string };
 }

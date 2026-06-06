@@ -1,7 +1,20 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { setupMock, type MockEnv } from "@unimap/testing";
-import { createOsmProvider, motisToRoute, motisModeToLegMode } from "@unimap/provider-osm";
+import {
+  createOsmProvider,
+  motisToRoute,
+  motisModeToLegMode,
+  dedupeItineraries,
+} from "@unimap/provider-osm";
 import { encodePolyline, type LatLngTuple, type Provider } from "@unimap/core";
+
+/** Wrap fetch to capture the outgoing request URL (for asserting query params). */
+const capturingFetch =
+  (capture: (url: URL) => void): typeof fetch =>
+  (input, init) => {
+    capture(new URL(input as string | URL));
+    return fetch(input as string | URL, init);
+  };
 
 let env: MockEnv;
 let osm: Provider;
@@ -126,8 +139,9 @@ describe("OSM routing", () => {
     const empty = createOsmProvider({ motisUrl: env.osm.motisUrl, fetchImpl: scenarioFetch("empty") });
     await expect(
       empty.routing!.route({
+        // within the geofence, so we reach the empty-itinerary path (not the fence)
         origin: { lat: 1, lng: 1 },
-        destination: { lat: 2, lng: 2 },
+        destination: { lat: 1.1, lng: 1.1 },
         waypoints: [],
         travelMode: "TRANSIT",
         alternatives: false,
@@ -144,6 +158,74 @@ describe("OSM routing", () => {
         travelMode: "TRANSIT",
       }),
     ).rejects.toThrow(/TRANSIT/);
+  });
+
+  it("geofences transit beyond the default 50 km", async () => {
+    // ~220 km apart — almost always a misgeocode; rejected before hitting MOTIS.
+    await expect(
+      osm.routing!.route({
+        origin: { lat: 37.0, lng: -122.0 },
+        destination: { lat: 38.0, lng: -120.0 },
+        waypoints: [],
+        travelMode: "TRANSIT",
+        alternatives: false,
+        avoid: [],
+      }),
+    ).rejects.toMatchObject({ code: "NOT_SUPPORTED" });
+  });
+
+  it("allows long transit when the geofence is raised", async () => {
+    const far = createOsmProvider({ motisUrl: env.osm.motisUrl, transitMaxKm: 100_000 });
+    const result = await far.routing!.route({
+      origin: { lat: 37.0, lng: -122.0 },
+      destination: { lat: 38.0, lng: -120.0 },
+      waypoints: [],
+      travelMode: "TRANSIT",
+      alternatives: false,
+      avoid: [],
+    });
+    expect(result.routes.length).toBeGreaterThan(0);
+  });
+
+  it("requests a wider searchWindow and dedupes the returned options", async () => {
+    let planUrl: URL | undefined;
+    const cap = createOsmProvider({
+      motisUrl: env.osm.motisUrl,
+      fetchImpl: capturingFetch((u) => {
+        if (u.pathname.endsWith("/plan")) planUrl = u;
+      }),
+    });
+    const result = await cap.routing!.route({
+      origin: { lat: 37.42, lng: -122.08 },
+      destination: { lat: 37.77, lng: -122.41 },
+      waypoints: [],
+      travelMode: "TRANSIT",
+      alternatives: false,
+      avoid: [],
+    });
+    expect(planUrl?.searchParams.get("searchWindow")).toBeTruthy();
+    // the mock returns 3 itineraries (two share the S7 signature) → deduped to 2
+    expect(result.routes.length).toBe(2);
+  });
+});
+
+describe("MOTIS itinerary dedup", () => {
+  it("collapses same-signature departures (keeps fastest) and preserves distinct ones", () => {
+    const out = dedupeItineraries([
+      { duration: 600, legs: [{ mode: "WALK" }, { mode: "BUS", routeShortName: "72" }, { mode: "WALK" }] },
+      { duration: 500, legs: [{ mode: "WALK" }, { mode: "BUS", routeShortName: "72" }, { mode: "WALK" }] },
+      { duration: 900, legs: [{ mode: "WALK" }, { mode: "SUBWAY", routeShortName: "Red" }, { mode: "WALK" }] },
+    ]);
+    expect(out.length).toBe(2);
+    expect(out[0]!.duration).toBe(500); // fastest first; the kept "72" departure
+    const sigs = out.map((it) =>
+      (it.legs ?? [])
+        .filter((l) => l.mode !== "WALK")
+        .map((l) => `${l.mode}:${l.routeShortName}`)
+        .join(">"),
+    );
+    expect(sigs).toContain("BUS:72");
+    expect(sigs).toContain("SUBWAY:Red");
   });
 });
 

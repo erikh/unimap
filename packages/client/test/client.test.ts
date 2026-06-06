@@ -4,7 +4,7 @@ import { startProxy, type StartedProxy } from "@unimap/proxy";
 import { createGoogleProvider } from "@unimap/provider-google";
 import { createAppleProvider } from "@unimap/provider-apple";
 import { createOsmProvider } from "@unimap/provider-osm";
-import { createUnimapClient, type UnimapClient } from "@unimap/client";
+import { createUnimapClient, normalizeGeocodeQuery, type UnimapClient } from "@unimap/client";
 
 let env: MockEnv;
 let proxy: StartedProxy;
@@ -45,6 +45,22 @@ beforeAll(async () => {
 afterAll(async () => {
   await proxy.close();
   await env.close();
+});
+
+describe("normalizeGeocodeQuery", () => {
+  it("rewrites the ' in ' connector to a comma (fixes the Oakland/Indiana trap)", () => {
+    expect(normalizeGeocodeQuery("801 broadway in oakland")).toBe("801 broadway, oakland");
+    expect(normalizeGeocodeQuery("926 Gilman in Berkeley")).toBe("926 Gilman, Berkeley");
+  });
+  it("leaves clean queries and embedded 'in' inside words intact", () => {
+    expect(normalizeGeocodeQuery("Alexanderplatz, Berlin")).toBe("Alexanderplatz, Berlin");
+    expect(normalizeGeocodeQuery("Berlin")).toBe("Berlin");
+  });
+  it("collapses redundant commas/whitespace and is idempotent", () => {
+    const once = normalizeGeocodeQuery("801 broadway   in  oakland");
+    expect(once).toBe("801 broadway, oakland");
+    expect(normalizeGeocodeQuery(once)).toBe(once);
+  });
 });
 
 describe("client → proxy → adapter → mock (full stack over HTTP)", () => {

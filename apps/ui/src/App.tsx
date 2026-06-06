@@ -2,18 +2,22 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import {
   boundsFromPoints,
+  haversineMeters,
   polylineToLatLngs,
   type LatLng,
   type Leg,
   type Route,
   type TravelMode,
 } from "@unimap/core";
-import { createUnimapClient } from "@unimap/client";
+import { createUnimapClient, normalizeGeocodeQuery } from "@unimap/client";
 import { MapCanvas, MapLayout, MapsProvider, useMapsClient } from "@unimap/react";
 import { MapLibreEngine, type MapView, type MarkerSpec, type PolylineSpec } from "@unimap/render";
 
-const PROXY_URL =
-  (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_PROXY_URL ?? "http://localhost:8787";
+const ENV = (import.meta as unknown as { env?: Record<string, string> }).env ?? {};
+const PROXY_URL = ENV.VITE_PROXY_URL ?? "http://localhost:8787";
+// Geofence for transit (km). Mirrors the proxy's TRANSIT_MAX_KM so we can warn
+// before the round-trip; the proxy still enforces it server-side. 0 disables.
+const TRANSIT_MAX_KM = Number(ENV.VITE_TRANSIT_MAX_KM ?? "50");
 
 interface RouteState {
   loading?: boolean;
@@ -50,13 +54,14 @@ function fmtTime(iso?: string): string {
 const titleCase = (s: string): string => s[0] + s.slice(1).toLowerCase();
 
 /** The transit lines a route rides, in order — for compact option summaries. */
-function routeLines(route: Route): { icon: string; label: string; color?: string }[] {
+function routeLines(route: Route): { icon: string; label: string; color?: string; agency?: string }[] {
   return route.legs
     .filter((l) => l.transit)
     .map((l) => ({
       icon: MODE_ICON[l.mode ?? "OTHER"] ?? "•",
       label: l.transit!.line ?? titleCase(l.mode ?? "Transit"),
       color: l.transit!.color,
+      agency: l.transit!.agency,
     }));
 }
 
@@ -155,11 +160,24 @@ function DirectionsPanel(): JSX.Element {
     e.preventDefault();
     setState({ loading: true });
     try {
-      const [origin] = await client.geocode({ query: from });
-      const [destination] = await client.geocode({ query: to });
+      const [origin] = await client.geocode({ query: normalizeGeocodeQuery(from) });
+      const [destination] = await client.geocode({ query: normalizeGeocodeQuery(to) });
       if (!origin || !destination) {
         setState({ error: "Could not geocode one of the endpoints." });
         return;
+      }
+      // Geofence transit before the round-trip: a wildly distant pair is almost
+      // always a misgeocode (an address that resolved to the wrong place).
+      if (mode === "TRANSIT" && TRANSIT_MAX_KM > 0) {
+        const km = haversineMeters(origin.location, destination.location) / 1000;
+        if (km > TRANSIT_MAX_KM) {
+          setState({
+            error: `Transit is limited to ${TRANSIT_MAX_KM} km, but these points are ${Math.round(
+              km,
+            )} km apart — check the addresses.`,
+          });
+          return;
+        }
       }
       const { routes } = await client.route({
         origin: origin.location,
@@ -243,6 +261,7 @@ function DirectionsPanel(): JSX.Element {
               </div>
               {state.routes.map((r, i) => {
                 const lines = routeLines(r);
+                const agencies = [...new Set(lines.map((l) => l.agency).filter(Boolean))];
                 const dep = firstDeparture(r);
                 const arr = lastArrival(r);
                 return (
@@ -275,6 +294,7 @@ function DirectionsPanel(): JSX.Element {
                     <div style={{ color: "#666", fontSize: 12, marginTop: 3 }}>
                       <b>{Math.round(r.durationSeconds / 60)} min</b>
                       {dep && ` · ${fmtTime(dep)}–${fmtTime(arr)}`}
+                      {agencies.length > 0 && ` · ${agencies.join(", ")}`}
                     </div>
                   </button>
                 );

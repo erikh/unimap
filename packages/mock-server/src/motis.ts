@@ -91,6 +91,25 @@ const OPTIONS: Option[] = [
     walkSeconds: 420,
     rideSeconds: 1_320,
   },
+  // A later, slower S7 departure — same line/mode signature as itin:0, so the
+  // adapter's dedup must collapse the two (keeping the faster itin:0).
+  {
+    id: "itin:2",
+    mode: "SUBURBAN",
+    line: TRANSIT.line,
+    headsign: TRANSIT.headsign,
+    agency: TRANSIT.agency,
+    color: TRANSIT.color,
+    textColor: TRANSIT.textColor,
+    routeType: TRANSIT.routeType,
+    tripId: "trip:S7:0825",
+    departTime: "2026-01-01T08:10:00.000Z",
+    boardTime: "2026-01-01T08:15:00.000Z",
+    alightTime: "2026-01-01T08:39:00.000Z",
+    arriveTime: "2026-01-01T08:44:00.000Z",
+    walkSeconds: TRANSIT.walkSeconds,
+    rideSeconds: 1_440,
+  },
 ];
 
 function itinerary(o: Option): unknown {

@@ -1,6 +1,8 @@
 import {
   httpJson,
+  haversineMeters,
   NotFoundError,
+  NotSupportedError,
   type GeocodeQuery,
   type GeocodeResult,
   type GeocodingService,
@@ -28,6 +30,7 @@ import {
   osrmProfile,
   osrmToRoute,
   motisToRoute,
+  dedupeItineraries,
   photonToPlace,
   photonToSuggestion,
   OSM_ATTRIBUTION,
@@ -46,6 +49,7 @@ export {
   osrmToRoute,
   motisToRoute,
   motisModeToLegMode,
+  dedupeItineraries,
   photonToPlace,
 } from "./mappers";
 
@@ -115,13 +119,29 @@ class OsmRouting implements RoutingService {
   /** TRANSIT routing via the MOTIS plan API. Point-to-point — waypoints are
    * not part of the MOTIS plan model, so they're ignored. */
   private async routeViaMotis(request: RouteRequest): Promise<RouteResult> {
+    // Geofence: transit planning is metro-scale. Reject absurd-distance pairs
+    // (often a misgeocode — e.g. an address that resolved to the wrong state)
+    // rather than asking MOTIS to plan a cross-country trip.
+    const maxKm = this.opts.transitMaxKm;
+    if (maxKm > 0) {
+      const km = haversineMeters(request.origin, request.destination) / 1000;
+      if (km > maxKm) {
+        throw new NotSupportedError(
+          `Transit routing is limited to ${maxKm} km; endpoints are ${Math.round(km)} km apart`,
+          { providerId: "osm" },
+        );
+      }
+    }
     const url = new URL(`${this.opts.motisUrl}/api/v6/plan`);
     url.searchParams.set("fromPlace", `${request.origin.lat},${request.origin.lng}`);
     url.searchParams.set("toPlace", `${request.destination.lat},${request.destination.lng}`);
     url.searchParams.set("transitModes", "TRANSIT");
+    // Widen the search so several distinct departures/options come back (we then
+    // de-duplicate near-identical ones); generic, not location-specific.
+    url.searchParams.set("searchWindow", "7200");
     if (request.departureTime) url.searchParams.set("time", request.departureTime);
     const data = await httpJson<MotisPlanResponse>(url, { headers: headers(this.opts) }, this.ctx());
-    const itineraries = data.itineraries ?? [];
+    const itineraries = dedupeItineraries(data.itineraries ?? []);
     if (!itineraries.length) {
       throw new NotFoundError("No transit route found", { providerId: "osm" });
     }

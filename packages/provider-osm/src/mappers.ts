@@ -294,6 +294,34 @@ function pathLengthMeters(points: LatLngTuple[]): number {
   return total;
 }
 
+/**
+ * The ordered transit-line signature of an itinerary — its sequence of
+ * `mode:line` for non-walk legs (e.g. "BUS:72>SUBWAY:Red"). Walk legs and times
+ * are ignored, so two departures of the same trip share a signature.
+ */
+function itinerarySignature(it: MotisItinerary): string {
+  return (it.legs ?? [])
+    .filter((l) => l.mode && l.mode.toUpperCase() !== "WALK")
+    .map((l) => `${l.mode}:${l.routeShortName ?? ""}`)
+    .join(">");
+}
+
+/**
+ * Collapse near-identical itineraries — same line/mode signature, differing only
+ * by departure time — keeping the fastest of each, sorted fastest-first and
+ * capped. Generic: no mode/region constants, so it behaves the same anywhere
+ * (e.g. five "bus 72" departures → one; a distinct train option stays a peer).
+ */
+export function dedupeItineraries(itineraries: MotisItinerary[], cap = 6): MotisItinerary[] {
+  const best = new Map<string, MotisItinerary>();
+  for (const it of itineraries) {
+    const sig = itinerarySignature(it);
+    const seen = best.get(sig);
+    if (!seen || (it.duration ?? Infinity) < (seen.duration ?? Infinity)) best.set(sig, it);
+  }
+  return [...best.values()].sort((a, b) => (a.duration ?? 0) - (b.duration ?? 0)).slice(0, cap);
+}
+
 /** Map one MOTIS itinerary onto a canonical multimodal Route. */
 export function motisToRoute(itinerary: MotisItinerary): Route {
   const motisLegs = itinerary.legs ?? [];

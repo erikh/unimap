@@ -56,6 +56,7 @@ export function buildProvidersFromEnv(env: Env = process.env): BuiltProviders {
       overpassUrl: env.OSM_OVERPASS_URL,
       tileUrl: env.OSM_TILE_URL,
       motisUrl: env.TRANSIT_URL,
+      transitMaxKm: env.TRANSIT_MAX_KM ? Number(env.TRANSIT_MAX_KM) : undefined,
       userAgent: env.OSM_USER_AGENT,
     }),
   );
