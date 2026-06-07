@@ -17,7 +17,7 @@ const ENV = (import.meta as unknown as { env?: Record<string, string> }).env ?? 
 const PROXY_URL = ENV.VITE_PROXY_URL ?? "http://localhost:8787";
 // Geofence for transit (km). Mirrors the proxy's TRANSIT_MAX_KM so we can warn
 // before the round-trip; the proxy still enforces it server-side. 0 disables.
-const TRANSIT_MAX_KM = Number(ENV.VITE_TRANSIT_MAX_KM ?? "50");
+const TRANSIT_MAX_KM = Number(ENV.VITE_TRANSIT_MAX_KM ?? "100");
 
 interface RouteState {
   loading?: boolean;

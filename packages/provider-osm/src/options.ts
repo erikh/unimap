@@ -16,7 +16,7 @@ export interface OsmProviderOptions {
   motisUrl?: string;
   /**
    * Geofence for TRANSIT: reject requests whose endpoints are more than this
-   * many kilometres apart (straight-line). Default 50; `<= 0` disables.
+   * many kilometres apart (straight-line). Default 100; `<= 0` disables.
    */
   transitMaxKm?: number;
   /** Identifies your app — required by the OSM/Nominatim usage policies. */
@@ -47,7 +47,7 @@ export function resolveOsmOptions(options: OsmProviderOptions = {}): ResolvedOsm
     overpassUrl: trimSlash(options.overpassUrl ?? "https://overpass-api.de/api"),
     tileUrl: options.tileUrl ?? "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
     motisUrl: trimSlash(options.motisUrl ?? "https://api.transitous.org"),
-    transitMaxKm: options.transitMaxKm ?? 50,
+    transitMaxKm: options.transitMaxKm ?? 100,
     userAgent: options.userAgent ?? "unimap/0.1 (+https://github.com/unimap)",
     fetchImpl: options.fetchImpl,
   };

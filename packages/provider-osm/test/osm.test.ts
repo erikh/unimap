@@ -160,8 +160,8 @@ describe("OSM routing", () => {
     ).rejects.toThrow(/TRANSIT/);
   });
 
-  it("geofences transit beyond the default 50 km", async () => {
-    // ~220 km apart — almost always a misgeocode; rejected before hitting MOTIS.
+  it("geofences transit beyond the default 100 km", async () => {
+    // ~208 km apart — almost always a misgeocode; rejected before hitting MOTIS.
     await expect(
       osm.routing!.route({
         origin: { lat: 37.0, lng: -122.0 },
